@@ -97,7 +97,10 @@ function ensureMcpRegistered() {
     const block =
         "\n[mcp_servers.memwal]\n" +
         'command = "npx"\n' +
-        'args = ["-y", "@mysten-incubation/memwal-mcp"]\n';
+        // Explicitly request the published dist-tag. Without it, npm can
+        // resolve the unbuilt local workspace package when Codex starts from
+        // a MemWal checkout, leaving no `memwal-mcp` executable on PATH.
+        'args = ["-y", "@mysten-incubation/memwal-mcp@latest"]\n';
     writeFileSync(CONFIG_FILE, (content.trimEnd() + "\n" + block).trimStart());
     return true;
 }

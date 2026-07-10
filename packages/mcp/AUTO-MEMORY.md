@@ -39,7 +39,7 @@ was never exposed as a tool.
 
 | Concept | mem0 plugin | MemWal plugin |
 |---|---|---|
-| MCP transport | remote HTTP | local stdio (`npx @mysten-incubation/memwal-mcp`) |
+| MCP transport | remote HTTP | local stdio (`npx @mysten-incubation/memwal-mcp@latest`) |
 | Auth | `MEM0_API_KEY` | Ed25519 delegate key (`~/.memwal/credentials.json`, browser login) |
 | Hook runtime | bash + Python (venv) | Node-only `.mjs` (no venv) |
 | Recall | hooks inject a search rubric (+ direct search on strong signals) | hooks inject a directive; agent calls `memwal_recall` (no hook-side fetch) |

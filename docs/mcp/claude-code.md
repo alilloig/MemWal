@@ -33,7 +33,7 @@ Add MemWal to Claude Code so it recalls context and saves durable facts as you w
   </Tab>
   <Tab title="MCP-only">
     ```bash
-    claude mcp add --scope user memwal -- npx -y @mysten-incubation/memwal-mcp
+    claude mcp add --scope user memwal -- npx -y @mysten-incubation/memwal-mcp@latest
     ```
     Restart Claude Code, then ask the agent to run `memwal_login` on first use.
 

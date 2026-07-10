@@ -5,7 +5,7 @@ Step-by-step plan to test the auto-memory work (agentic tools + bulk + health + 
 > **Local note:** the standalone configs below point at your **local build** via
 > `node /Users/uydev/code/MemWal/packages/mcp/dist/bin/memwal-mcp.js --local`
 > (tests your local code, not the published npx package). The **shipped plugin
-> `.mcp.json` is prod** (`npx -y @mysten-incubation/memwal-mcp`) — no `--local` in
+> `.mcp.json` is prod** (`npx -y @mysten-incubation/memwal-mcp@latest`) — no `--local` in
 > the committed file. It still reaches your **local relayer** because your saved
 > creds (`~/.memwal/credentials.json`) point there. To force a local target by hand
 > (e.g. fresh/prod creds), `export MEMWAL_SERVER_URL=http://127.0.0.1:8000` in the
@@ -192,7 +192,7 @@ Notes:
 
 ## 4. Before the PR
 
-- [x] `packages/mcp/plugin/.mcp.json` ships the prod default (`npx -y @mysten-incubation/memwal-mcp`) — no `--local` in the committed file
+- [x] `packages/mcp/plugin/.mcp.json` ships the prod default (`npx -y @mysten-incubation/memwal-mcp@latest`) — no `--local` in the committed file
 - [ ] Re-register `memwal-local` if you removed it for the plugin test
 - [ ] Remove the temporary local `memwal` entries from Claude Desktop / Cursor / Codex / OpenCode configs (or keep for ongoing local dev)
 

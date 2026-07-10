@@ -20,7 +20,7 @@ Add the server to `~/.cursor/mcp.json`:
   "mcpServers": {
     "memwal": {
       "command": "npx",
-      "args": ["-y", "@mysten-incubation/memwal-mcp"]
+      "args": ["-y", "@mysten-incubation/memwal-mcp@latest"]
     }
   }
 }

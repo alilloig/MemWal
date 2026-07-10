@@ -13,7 +13,7 @@ Add Walrus Memory MCP to your MCP client config:
   "mcpServers": {
     "memwal": {
       "command": "npx",
-      "args": ["-y", "@mysten-incubation/memwal-mcp"]
+      "args": ["-y", "@mysten-incubation/memwal-mcp@latest"]
     }
   }
 }
@@ -24,7 +24,7 @@ Add Walrus Memory MCP to your MCP client config:
 Run the login flow manually:
 
 ```sh
-npx -y @mysten-incubation/memwal-mcp login
+npx -y @mysten-incubation/memwal-mcp@latest login
 ```
 
 The command opens your browser, asks you to connect your Sui wallet, and saves credentials locally.
@@ -63,7 +63,7 @@ your client config instead:
   "mcpServers": {
     "memwal": {
       "command": "npx",
-      "args": ["-y", "@mysten-incubation/memwal-mcp", "--namespace", "work"]
+      "args": ["-y", "@mysten-incubation/memwal-mcp@latest", "--namespace", "work"]
     }
   }
 }
@@ -76,7 +76,7 @@ Or with an environment variable (e.g. Claude Desktop / Codex `env` blocks):
   "mcpServers": {
     "memwal": {
       "command": "npx",
-      "args": ["-y", "@mysten-incubation/memwal-mcp"],
+      "args": ["-y", "@mysten-incubation/memwal-mcp@latest"],
       "env": { "MEMWAL_NAMESPACE": "work" }
     }
   }
@@ -103,7 +103,7 @@ No automated test runner ships with this package (consistent with the rest of
 the monorepo). To verify manually:
 
 1. Start the server pinned to a namespace and with debug logging:
-   `MEMWAL_MCP_DEBUG=1 npx -y @mysten-incubation/memwal-mcp --namespace demo-ns`
+   `MEMWAL_MCP_DEBUG=1 npx -y @mysten-incubation/memwal-mcp@latest --namespace demo-ns`
 2. From your MCP client, ask the agent to remember a fact **without**
    specifying a namespace, then recall it **without** a namespace — the recall
    should return that fact (both landed in `demo-ns`).
@@ -131,7 +131,7 @@ You can also pass explicit URLs:
       "command": "npx",
       "args": [
         "-y",
-        "@mysten-incubation/memwal-mcp",
+        "@mysten-incubation/memwal-mcp@latest",
         "--relayer",
         "https://relayer-staging.memory.walrus.xyz"
       ]
@@ -145,7 +145,7 @@ You can also pass explicit URLs:
 Credentials are stored locally in `~/.memwal/credentials.json`. To remove them:
 
 ```sh
-npx -y @mysten-incubation/memwal-mcp --logout
+npx -y @mysten-incubation/memwal-mcp@latest --logout
 ```
 
 ## License

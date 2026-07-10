@@ -23,7 +23,7 @@ Add the server to your Claude Desktop config:
   "mcpServers": {
     "memwal": {
       "command": "npx",
-      "args": ["-y", "@mysten-incubation/memwal-mcp"],
+      "args": ["-y", "@mysten-incubation/memwal-mcp@latest"],
       "env": { "MEMWAL_NAMESPACE": "default" }
     }
   }

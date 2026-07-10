@@ -28,7 +28,7 @@ Add MemWal to Antigravity so the agent recalls context and saves durable facts. 
       "mcpServers": {
         "memwal": {
           "command": "npx",
-          "args": ["-y", "@mysten-incubation/memwal-mcp"],
+          "args": ["-y", "@mysten-incubation/memwal-mcp@latest"],
           "env": { "MEMWAL_NAMESPACE": "default" }
         }
       }

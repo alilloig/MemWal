@@ -71,7 +71,7 @@ user's home directory when possible, especially if the current project is a
 Node monorepo:
 
 ```bash
-npx -y @mysten-incubation/memwal-mcp login --prod
+npx -y @mysten-incubation/memwal-mcp@latest login --prod
 ```
 
 This opens the browser login flow and saves `~/.memwal/credentials.json`.
@@ -95,7 +95,7 @@ If the user says the browser shows Connected but memory tools still act
 unsigned-in, use the terminal login fallback:
 
 ```bash
-npx -y @mysten-incubation/memwal-mcp login --prod
+npx -y @mysten-incubation/memwal-mcp@latest login --prod
 ```
 
 Then retry the memory tool. If the client still does not see credentials, fully
@@ -106,7 +106,7 @@ quit and reopen the AI client.
 Use this stdio MCP command for local MCP clients:
 
 ```bash
-npx -y @mysten-incubation/memwal-mcp
+npx -y @mysten-incubation/memwal-mcp@latest
 ```
 
 ### Cursor
@@ -118,7 +118,7 @@ Edit `~/.cursor/mcp.json` and merge:
   "mcpServers": {
     "memwal": {
       "command": "npx",
-      "args": ["-y", "@mysten-incubation/memwal-mcp"]
+      "args": ["-y", "@mysten-incubation/memwal-mcp@latest"]
     }
   }
 }
@@ -141,7 +141,7 @@ Merge:
   "mcpServers": {
     "memwal": {
       "command": "npx",
-      "args": ["-y", "@mysten-incubation/memwal-mcp"]
+      "args": ["-y", "@mysten-incubation/memwal-mcp@latest"]
     }
   }
 }
@@ -154,18 +154,11 @@ Edit `~/.codex/config.toml` and merge:
 ```toml
 [mcp_servers.memwal]
 command = "npx"
-args = ["-y", "@mysten-incubation/memwal-mcp"]
+args = ["-y", "@mysten-incubation/memwal-mcp@latest"]
 ```
 
-If Codex starts MCP servers from a project directory and `npx` resolves the
-wrong package, set the server working directory to the user's home directory:
-
-```toml
-[mcp_servers.memwal]
-command = "npx"
-args = ["-y", "@mysten-incubation/memwal-mcp"]
-cwd = "/Users/YOUR_USERNAME"
-```
+The explicit `@latest` ensures `npx` uses the published package even when
+Codex starts the server from a project checkout containing the MemWal workspace.
 
 ### Claude Code
 
@@ -182,7 +175,7 @@ Then restart Claude Code.
 MCP-only alternative:
 
 ```bash
-claude mcp add --scope user memwal -- npx -y @mysten-incubation/memwal-mcp
+claude mcp add --scope user memwal -- npx -y @mysten-incubation/memwal-mcp@latest
 ```
 
 Verify:
@@ -197,7 +190,7 @@ Add an MCP server with:
 
 - name: `memwal`
 - command: `npx`
-- args: `["-y", "@mysten-incubation/memwal-mcp"]`
+- args: `["-y", "@mysten-incubation/memwal-mcp@latest"]`
 
 ## Restart
 
@@ -232,7 +225,7 @@ If only `memwal_login` works, credentials are missing or stale. Run
 `memwal_login`, or run the terminal login command again:
 
 ```bash
-npx -y @mysten-incubation/memwal-mcp login --prod
+npx -y @mysten-incubation/memwal-mcp@latest login --prod
 ```
 
 ## Verify Memory
@@ -305,12 +298,12 @@ instead. Do not re-run this skill for the same client.
 | Symptom | Fix |
 | --- | --- |
 | `node: command not found` | Install Node.js 20+ from https://nodejs.org/. |
-| `npx` fails | Confirm Node/npm and internet access. If inside a Node monorepo, run from the home directory or set MCP `cwd` to the home directory. |
+| `npx` fails | Confirm Node/npm and internet access. The documented command uses `@latest` so it selects the published package even inside a MemWal checkout. |
 | No Walrus Memory tools after restart | Check the MCP config path and fully restart the client. |
-| Only `memwal_login` works | Credentials are missing. Run `memwal_login` or `npx -y @mysten-incubation/memwal-mcp login --prod`. |
-| Memory tools return 401 | The delegate key may be stale or revoked. Run `npx -y @mysten-incubation/memwal-mcp login --prod` again. |
+| Only `memwal_login` works | Credentials are missing. Run `memwal_login` or `npx -y @mysten-incubation/memwal-mcp@latest login --prod`. |
+| Memory tools return 401 | The delegate key may be stale or revoked. Run `npx -y @mysten-incubation/memwal-mcp@latest login --prod` again. |
 | `memwal_recall` returns nothing although memories were saved before | Run `memwal_restore <namespace>` to rebuild the search index from Walrus, then retry the recall. |
-| Sign out | Run `npx -y @mysten-incubation/memwal-mcp --logout`. This removes local credentials but does not revoke the delegate key. |
+| Sign out | Run `npx -y @mysten-incubation/memwal-mcp@latest --logout`. This removes local credentials but does not revoke the delegate key. |
 
 ## Final Report
 

@@ -138,7 +138,7 @@ Example — pin every memory call to a `work` namespace:
   "mcpServers": {
     "memwal": {
       "command": "npx",
-      "args": ["-y", "@mysten-incubation/memwal-mcp", "--namespace", "work"]
+      "args": ["-y", "@mysten-incubation/memwal-mcp@latest", "--namespace", "work"]
     }
   }
 }
@@ -197,7 +197,7 @@ Walrus Memory supports two MCP connection modes.
 
 | Mode | Best for | Configured via |
 | --- | --- | --- |
-| **stdio package** | Clients that run local MCP commands (most clients today) | `npx -y @mysten-incubation/memwal-mcp` in the client config |
+| **stdio package** | Clients that run local MCP commands (most clients today) | `npx -y @mysten-incubation/memwal-mcp@latest` in the client config |
 | **Streamable HTTP** | Clients that support remote HTTP MCP servers | `url: "https://relayer.memory.walrus.xyz/api/mcp"` + auth headers |
 
 ### Streamable HTTP
@@ -218,7 +218,7 @@ Use HTTP transport when your client supports remote MCP servers natively. Authen
 }
 ```
 
-The bearer token is the `delegatePrivateKey` from `~/.memwal/credentials.json`. The account ID is the `accountId` field in that same file. Run `npx -y @mysten-incubation/memwal-mcp login --prod` once to populate it.
+The bearer token is the `delegatePrivateKey` from `~/.memwal/credentials.json`. The account ID is the `accountId` field in that same file. Run `npx -y @mysten-incubation/memwal-mcp@latest login --prod` once to populate it.
 
 <Warning>
 The bearer token is a long-lived credential equivalent to an API key. **Never commit MCP configs with a real `Authorization` header to source control.** Treat it like any other secret.
@@ -306,7 +306,7 @@ Quit and relaunch your MCP client — MCP servers only load at startup. If you u
 
 ### Only `memwal_login` shows up
 
-Credentials are missing. Ask the agent to call `memwal_login`, or run `npx -y @mysten-incubation/memwal-mcp login --prod` from your terminal.
+Credentials are missing. Ask the agent to call `memwal_login`, or run `npx -y @mysten-incubation/memwal-mcp@latest login --prod` from your terminal.
 
 ### `memwal_login` URL expires before approval
 

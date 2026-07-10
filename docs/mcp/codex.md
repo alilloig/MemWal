@@ -40,7 +40,7 @@ Add MemWal to Codex so it recalls context and saves durable facts as you work. I
     ```toml
     [mcp_servers.memwal]
     command = "npx"
-    args = ["-y", "@mysten-incubation/memwal-mcp"]
+    args = ["-y", "@mysten-incubation/memwal-mcp@latest"]
     ```
     Restart Codex, then ask the agent to run `memwal_login` on first use.
   </Tab>

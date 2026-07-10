@@ -20,7 +20,7 @@ Add the server to `~/.config/opencode/opencode.json` as a local (stdio) MCP serv
   "mcp": {
     "memwal": {
       "type": "local",
-      "command": ["npx", "-y", "@mysten-incubation/memwal-mcp"],
+      "command": ["npx", "-y", "@mysten-incubation/memwal-mcp@latest"],
       "enabled": true
     }
   }

@@ -122,9 +122,9 @@ const LOGIN_INSTRUCTION = [
     "",
     "Fallback (if your client cannot call `memwal_login`, or you prefer a CLI):",
     "",
-    "    npx -y @mysten-incubation/memwal-mcp login",
+    "    npx -y @mysten-incubation/memwal-mcp@latest login",
     "",
-    "(or `npx -y @mysten-incubation/memwal-mcp login --local` / `--dev` for a non-prod env)",
+    "(or `npx -y @mysten-incubation/memwal-mcp@latest login --local` / `--dev` for a non-prod env)",
     "",
     "Either path opens a browser tab — click **Connect Sui Wallet** and approve the on-chain",
     "`add_delegate_key` transaction. Credentials land at `~/.memwal/credentials.json`.",
@@ -248,7 +248,7 @@ async function handleLoginToolCall(
                 "",
                 "Try the CLI fallback:",
                 "",
-                "    npx -y @mysten-incubation/memwal-mcp login",
+                "    npx -y @mysten-incubation/memwal-mcp@latest login",
             ].join("\n"),
         };
     }
