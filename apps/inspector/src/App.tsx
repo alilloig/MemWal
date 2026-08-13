@@ -9,6 +9,7 @@ import { OverviewCards } from "./components/OverviewCards";
 import { InventoryTable } from "./components/InventoryTable";
 import { SearchPanel } from "./components/SearchPanel";
 import { ActionsPanel } from "./components/ActionsPanel";
+import { PalaceWorld } from "./palace/PalaceWorld";
 
 export function App() {
     const [settings, setSettings] = useState<InspectorSettings | null>(() => {
@@ -23,53 +24,88 @@ export function App() {
     });
     const [editing, setEditing] = useState(false);
 
-    if (!settings || editing) {
+    if (!settings) {
+        // The visitor stands at the gates: the palace flight runs behind a
+        // single console holding the connect flow.
         return (
-            <div className="shell">
-                <Header onEdit={null} />
-                <SettingsForm
-                    initial={settings ?? DEFAULT_SETTINGS}
-                    onSave={(s) => {
-                        saveSettings(s);
-                        setSettings(s);
-                        setEditing(false);
-                    }}
-                    onCancel={settings ? () => setEditing(false) : undefined}
-                />
-            </div>
+            <PalaceWorld
+                console={
+                    <SettingsForm
+                        initial={DEFAULT_SETTINGS}
+                        onSave={(s) => {
+                            saveSettings(s);
+                            setSettings(s);
+                        }}
+                    />
+                }
+            />
         );
     }
 
     return (
-        <Inspector
-            // Remount when the account changes so no stale state leaks across accounts.
-            key={`${settings.accountId}-${settings.network}`}
-            settings={settings}
-            onEdit={() => setEditing(true)}
-            onDisconnect={() => {
-                clearSettings();
-                setSettings(null);
-            }}
-        />
+        <>
+            <Inspector
+                // Remount when the account changes so no stale state leaks across accounts.
+                key={`${settings.accountId}-${settings.network}`}
+                settings={settings}
+                onEdit={() => setEditing(true)}
+                onDisconnect={() => {
+                    clearSettings();
+                    setSettings(null);
+                }}
+            />
+            {editing && (
+                <div className="palace-modal" onClick={(e) => e.target === e.currentTarget && setEditing(false)}>
+                    <SettingsForm
+                        initial={settings}
+                        onSave={(s) => {
+                            saveSettings(s);
+                            setSettings(s);
+                            setEditing(false);
+                        }}
+                        onCancel={() => setEditing(false)}
+                    />
+                </div>
+            )}
+        </>
     );
 }
 
-function Header({ onEdit, onDisconnect }: { onEdit: (() => void) | null; onDisconnect?: () => void }) {
+/** Room 0 console — connection summary while standing at the gates. */
+function GateCard({
+    accountId,
+    health,
+    healthError,
+}: {
+    accountId: string;
+    health: HealthResult | null;
+    healthError: string | null;
+}) {
     return (
-        <header>
-            <h1>
-                <span className="logo">◍</span> Walrus Memory Inspector
-            </h1>
-            <span className="tagline">
-                every memory your agent stored — straight from the chain
-            </span>
-            {onEdit && (
-                <div className="header-actions">
-                    <button onClick={onEdit}>Settings</button>
-                    {onDisconnect && <button onClick={onDisconnect}>Disconnect</button>}
+        <section>
+            <div className="section-head">
+                <h2>THE GATES</h2>
+            </div>
+            <div className="card account-card">
+                <p className="hint">
+                    You are connected to this palace. Scroll to walk its rooms — each one
+                    is a live view over the same account, powered by the SDK call named on
+                    its plaque.
+                </p>
+                <div className="stat">
+                    <span className="stat-label">account</span>
+                    <span className="stat-value" style={{ fontSize: "0.8rem", wordBreak: "break-all" }}>
+                        {accountId}
+                    </span>
                 </div>
-            )}
-        </header>
+                <div className="stat">
+                    <span className="stat-label">relayer</span>
+                    <span className={`stat-value ${healthError ? "err" : "ok"}`} style={{ fontSize: "1rem" }}>
+                        {healthError ? "unreachable" : health ? `ok · v${health.version ?? "?"}` : "…"}
+                    </span>
+                </div>
+            </div>
+        </section>
     );
 }
 
@@ -99,6 +135,7 @@ function Inspector({
         [resolved],
     );
 
+    const [room, setRoom] = useState(0);
     const [health, setHealth] = useState<HealthResult | null>(null);
     const [healthError, setHealthError] = useState<string | null>(null);
     const [account, setAccount] = useState<AccountInfo | null>(null);
@@ -185,46 +222,63 @@ function Inspector({
         [blobs],
     );
 
+    // All rooms stay mounted; only the active one is shown, so results and
+    // form state survive the walk through the palace.
+    const show = (i: number): React.CSSProperties => ({ display: room === i ? "block" : "none" });
+
     return (
-        <div className="shell">
-            <Header onEdit={onEdit} onDisconnect={onDisconnect} />
-            <OverviewCards
-                health={health}
-                healthError={healthError}
-                account={account}
-                accountId={resolved.accountId}
-                blobs={blobs}
-                network={resolved.network}
-            />
-            <InventoryTable
-                blobs={blobs}
-                network={resolved.network}
-                loading={loading}
-                progress={progress}
-                error={error}
-                revealing={revealing}
-                onRefresh={refresh}
-                onReveal={reveal}
-            />
-            <SearchPanel
-                memwal={memwal}
-                namespaces={namespaces}
-                defaultNamespace={resolved.namespace}
-                network={resolved.network}
-            />
-            <ActionsPanel
-                memwal={memwal}
-                defaultNamespace={resolved.namespace}
-                onChanged={refresh}
-            />
-            <footer>
-                Sample app for{" "}
-                <a href="https://memory.walrus.xyz" target="_blank" rel="noreferrer">
-                    Walrus Memory
-                </a>{" "}
-                — inventory read from Sui, content decrypted through the relayer via{" "}
-                <code>@mysten-incubation/memwal</code>.
-            </footer>
-        </div>
+        <PalaceWorld
+            onRoomChange={setRoom}
+            topRight={
+                <>
+                    <button onClick={onEdit}>Settings</button>
+                    <button onClick={onDisconnect}>Disconnect</button>
+                </>
+            }
+            console={
+                <>
+                    <div style={show(0)}>
+                        <GateCard accountId={resolved.accountId} health={health} healthError={healthError} />
+                    </div>
+                    <div style={show(1)}>
+                        <OverviewCards
+                            health={health}
+                            healthError={healthError}
+                            account={account}
+                            accountId={resolved.accountId}
+                            blobs={blobs}
+                            network={resolved.network}
+                        />
+                    </div>
+                    <div style={show(2)}>
+                        <InventoryTable
+                            blobs={blobs}
+                            network={resolved.network}
+                            loading={loading}
+                            progress={progress}
+                            error={error}
+                            revealing={revealing}
+                            onRefresh={refresh}
+                            onReveal={reveal}
+                        />
+                    </div>
+                    <div style={show(3)}>
+                        <SearchPanel
+                            memwal={memwal}
+                            namespaces={namespaces}
+                            defaultNamespace={resolved.namespace}
+                            network={resolved.network}
+                        />
+                    </div>
+                    <div style={show(4)}>
+                        <ActionsPanel
+                            memwal={memwal}
+                            defaultNamespace={resolved.namespace}
+                            onChanged={refresh}
+                        />
+                    </div>
+                </>
+            }
+        />
     );
 }

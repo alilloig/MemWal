@@ -1,9 +1,26 @@
-# Walrus Memory Inspector
+# Walrus Memory Inspector — the Memory Palace
 
-A sample dashboard that shows how to build a **memory inspector** with the
-Walrus Memory SDK (`@mysten-incubation/memwal`): browse every memory an
-account has stored, with its on-chain metadata, and decrypt content through
-the relayer.
+A sample app that shows how to build a **memory inspector** with the
+Walrus Memory SDK (`@mysten-incubation/memwal`) — presented as a scroll-through
+**crystal memory palace**. Scrolling flies the camera through five rooms;
+each room hosts a live console over the same account:
+
+| Room | Console | SDK surface |
+| --- | --- | --- |
+| The Gates | connection status | `health()` |
+| The Atrium | account overview | chain `MemWalAccount` read |
+| The Vault | memory inventory by metadata | `listOwnedObjects` + `memwal_*` fields, `recall()` join |
+| The Observatory | semantic search | `recall()` |
+| The Scriptorium | write & maintain | `remember()`, `analyze()`, `restore()` |
+
+The visuals were generated with Higgsfield (scene stills; see
+`gen-src/`) and are driven by the scroll-world scrub engine
+(`src/palace/scrub-engine.js`). The build currently ships the still-image
+flight (crossfade + slow push between rooms); `gen-src/legs.sh` upgrades it to
+a fully seamless video fly-through — video generation needs a Higgsfield plan
+with video access (`seedance_2_0`/`kling3_0` are gated above the free tier).
+After generating, encode per the scroll-world skill Step 6 into
+`public/palace/<room>.mp4` and the engine picks them up automatically.
 
 ## What it demonstrates
 

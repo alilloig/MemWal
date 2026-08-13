@@ -1,0 +1,252 @@
+/* ============================================================
+   Crystal Memory Palace — theme + live console layer
+   The scroll-world engine injects its own CSS (@layer sw); these
+   tokens override its theme, and .palace-console styles the live
+   inspector panels that float over the flight.
+   ============================================================ */
+
+:root,
+.sw-root {
+    --sw-bg: #070912;
+    --sw-ink: #eaf6ff;
+    --sw-ink-soft: #8fa3bf;
+    --sw-accent: #67e8f9;
+    --sw-font-display: Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --sw-font-body: Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Let the palace own the page scroll; kill the old app shell constraints. */
+body {
+    background: var(--sw-bg);
+}
+
+.palace-host {
+    position: relative;
+}
+
+/* The engine pins its 5 viewport-sized scene layers with will-change, which
+   forces 5 permanent GPU layers. On some GPU/driver combos (observed on this
+   macOS + Chrome-for-Testing) that breaks surface capture — screenshots and
+   some captures render black. Chrome promotes animating layers on demand
+   anyway, so dropping the hint costs little and fixes capture. */
+.sw-root .sw-scene,
+.sw-root .sw-scene__still,
+.sw-root .sw-copy,
+.sw-root .sw-particles {
+    will-change: auto !important;
+}
+
+/* The top nav + scroll already navigate rooms; the right-edge route rail sits
+   exactly where the live console floats, so retire it. */
+.sw-root .sw-route {
+    display: none;
+}
+
+/* Keep the engine's room nav clear of the fixed Settings/Disconnect buttons. */
+.sw-root .sw-topbar {
+    padding-right: 230px;
+}
+
+/* Engine tag pills assume a light theme (color-mix with #fff/#000) — flip them. */
+.sw-root .sw-copy__tags li {
+    color: color-mix(in srgb, var(--sw-accent) 80%, #fff);
+    background: color-mix(in srgb, var(--sw-accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--sw-accent) 45%, transparent);
+    font-family: var(--mono);
+    font-weight: 500;
+}
+
+/* ---------- fixed chrome (top-right actions) ---------- */
+.palace-topright {
+    position: fixed;
+    top: 14px;
+    right: 18px;
+    z-index: 300;
+    display: flex;
+    gap: 8px;
+}
+
+.palace-topright button {
+    background: rgba(13, 20, 38, 0.55);
+    border: 1px solid rgba(103, 232, 249, 0.25);
+    color: var(--sw-ink);
+    border-radius: 999px;
+    padding: 7px 16px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.palace-topright button:hover {
+    border-color: var(--sw-accent, #67e8f9);
+    color: var(--sw-accent, #67e8f9);
+}
+
+/* ---------- the live console (right side, per-room) ---------- */
+.palace-console {
+    position: fixed;
+    right: clamp(14px, 3vw, 44px);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 220;
+    width: min(480px, 40vw);
+    max-height: 76vh;
+    display: flex;
+    animation: palace-console-in 620ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes palace-console-in {
+    from {
+        opacity: 0;
+        transform: translateY(calc(-50% + 26px));
+        filter: blur(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%);
+        filter: blur(0);
+    }
+}
+
+.palace-console__inner {
+    width: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 18px;
+    padding: 20px 20px 22px;
+    background: linear-gradient(
+        160deg,
+        rgba(14, 22, 44, 0.72),
+        rgba(9, 13, 28, 0.78)
+    );
+    border: 1px solid color-mix(in srgb, var(--sw-accent, #67e8f9) 32%, transparent);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 24px 70px rgba(0, 0, 0, 0.55),
+        0 0 42px color-mix(in srgb, var(--sw-accent, #67e8f9) 12%, transparent);
+    backdrop-filter: blur(18px) saturate(1.2);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--sw-accent, #67e8f9) 40%, transparent) transparent;
+}
+
+/* ---------- restyle the classic panels for crystal glass ---------- */
+.palace-console section {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.palace-console .section-head {
+    margin: 0 0 10px;
+}
+
+.palace-console .section-head h2 {
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    color: color-mix(in srgb, var(--sw-accent, #67e8f9) 85%, #fff);
+}
+
+.palace-console .card {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(148, 190, 255, 0.14);
+    border-radius: 12px;
+}
+
+.palace-console .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.palace-console .stat-value {
+    text-shadow: 0 0 18px color-mix(in srgb, var(--sw-accent, #67e8f9) 45%, transparent);
+}
+
+.palace-console input,
+.palace-console select,
+.palace-console textarea {
+    background: rgba(7, 11, 24, 0.65);
+    border-color: rgba(148, 190, 255, 0.2);
+}
+
+.palace-console button.primary {
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--sw-accent, #67e8f9) 85%, #fff),
+        color-mix(in srgb, var(--sw-accent, #67e8f9) 55%, #6366f1)
+    );
+    color: #05070f;
+    border: 0;
+    box-shadow: 0 4px 24px color-mix(in srgb, var(--sw-accent, #67e8f9) 35%, transparent);
+}
+
+.palace-console .table-wrap {
+    max-height: 44vh;
+    overflow: auto;
+    border-radius: 10px;
+}
+
+.palace-console .settings-form {
+    max-width: none;
+    margin: 0;
+    padding: 4px 2px;
+    background: transparent;
+    border: 0;
+}
+
+.palace-console .settings-form h2 {
+    font-size: 1.05rem;
+}
+
+/* room-flavoured console glow */
+.palace-console[data-room="gates"] .palace-console__inner { --sw-accent: #67e8f9; }
+.palace-console[data-room="atrium"] .palace-console__inner { --sw-accent: #a78bfa; }
+.palace-console[data-room="vault"] .palace-console__inner { --sw-accent: #38bdf8; }
+.palace-console[data-room="observatory"] .palace-console__inner { --sw-accent: #f0abfc; }
+.palace-console[data-room="scriptorium"] .palace-console__inner { --sw-accent: #fbbf24; }
+
+/* ---------- narrow screens: console becomes a bottom sheet ---------- */
+@media (max-width: 980px) {
+    .palace-console {
+        right: 10px;
+        left: 10px;
+        top: auto;
+        bottom: 12px;
+        transform: none;
+        width: auto;
+        max-height: 46vh;
+    }
+
+    @keyframes palace-console-in {
+        from {
+            opacity: 0;
+            transform: translateY(26px);
+            filter: blur(6px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+            filter: blur(0);
+        }
+    }
+}
+
+/* ---------- full-screen modal for editing settings over the palace ---------- */
+.palace-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    display: grid;
+    place-items: center;
+    background: rgba(4, 6, 14, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.palace-modal > .settings-form {
+    width: min(560px, 92vw);
+    max-height: 86vh;
+    overflow-y: auto;
+}
