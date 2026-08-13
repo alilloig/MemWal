@@ -20,6 +20,13 @@
  *      to http://localhost:<port>/callback — the MCP package's listener.
  *   5. Show success screen — user can close the tab.
  *
+ * Redirect mode (`/connect/app`): web apps that can't run a localhost listener
+ * pass `redirect=<https url>` INSTEAD of `port`. Steps 1–3 are identical; the
+ * result is delivered by navigating to the redirect URL with the payload in
+ * the URL *fragment* (never sent to any server, invisible to logs/referrers).
+ * Everything in the fragment is public on-chain data — the delegate private
+ * key exists only in the requesting app, which generated it.
+ *
  * Error paths:
  *   - Wallet not connected → wallet picker.
  *   - User has no Walrus Memory account yet → link to /setup.
@@ -50,6 +57,22 @@ type Step =
     | 'success'
     | 'no-account'
     | 'error'
+
+/**
+ * Redirect targets must be plain http(s) URLs. The payload we deliver is all
+ * public on-chain data, so no allowlist is needed — but the consent card shows
+ * the target origin prominently so the user sees where they'll be sent, and
+ * we refuse anything that isn't a web origin (javascript:, data:, custom
+ * schemes) to keep this from becoming a script-injection or app-launch vector.
+ */
+function isValidRedirect(url: string): boolean {
+    try {
+        const u = new URL(url)
+        return u.protocol === 'https:' || u.protocol === 'http:'
+    } catch {
+        return false
+    }
+}
 
 function hexToBytes(hex: string): number[] {
     const clean = hex.startsWith('0x') ? hex.slice(2) : hex
@@ -88,6 +111,12 @@ export default function ConnectMcp() {
     const { mutateAsync: signAndExecute } = useSponsoredTransaction()
 
     const port = params.get('port') ?? ''
+    /**
+     * Redirect-mode delivery target (web apps, `/connect/app`). Mutually
+     * exclusive with `port` in practice; if both arrive, redirect wins —
+     * a web app can't have opened a localhost listener anyway.
+     */
+    const redirect = params.get('redirect') ?? ''
     const publicKey = params.get('publicKey') ?? ''
     const delegateAddress = params.get('delegateAddress') ?? ''
     const label = params.get('label') ?? 'Walrus Memory MCP'
@@ -118,10 +147,11 @@ export default function ConnectMcp() {
     // Validate query string up-front.
     const paramsValid = useMemo(() => {
         const portNum = Number(port)
+        const deliveryValid = redirect
+            ? isValidRedirect(redirect)
+            : Number.isFinite(portNum) && portNum > 1024 && portNum < 65536
         return (
-            Number.isFinite(portNum) &&
-            portNum > 1024 &&
-            portNum < 65536 &&
+            deliveryValid &&
             /^[0-9a-fA-F]{64}$/.test(publicKey) &&
             /^0x[0-9a-fA-F]{64}$/.test(delegateAddress) &&
             // State token is a 32-byte hex string emitted by the MCP bridge.
@@ -129,7 +159,7 @@ export default function ConnectMcp() {
             // forces a bridge upgrade so we never accept stateless callbacks.
             /^[0-9a-f]{64}$/.test(state)
         )
-    }, [port, publicKey, delegateAddress, state])
+    }, [port, redirect, publicKey, delegateAddress, state])
 
     const postCallback = useCallback(
         async (payload: McpCallbackPayload): Promise<boolean> => {
@@ -222,12 +252,28 @@ export default function ConnectMcp() {
             }
             setCallbackPayload(payload)
             setStep('callback')
+
+            if (redirect) {
+                // Redirect delivery: payload goes in the URL fragment —
+                // fragments never leave the browser (not sent to the target's
+                // server, absent from logs and Referer headers).
+                sessionStorage.removeItem('memwal_mcp_connect')
+                trackEvent('mcp_connect_complete', { callback_delivered: true, delivery: 'redirect' })
+                const target = new URL(redirect)
+                target.hash = new URLSearchParams({
+                    ...payload,
+                    network: config.suiNetwork,
+                }).toString()
+                window.location.assign(target.toString())
+                return
+            }
+
             const delivered = await postCallback(payload)
             // Flow done — drop the OAuth-resume breadcrumb so a later visit to
             // `/` goes to the dashboard instead of looping back here.
             sessionStorage.removeItem('memwal_mcp_connect')
             setStep('success')
-            trackEvent('mcp_connect_complete', { callback_delivered: delivered })
+            trackEvent('mcp_connect_complete', { callback_delivered: delivered, delivery: 'localhost' })
         } catch (err) {
             setErrorMsg(err instanceof Error ? err.message : String(err))
             setStep('error')
@@ -242,6 +288,7 @@ export default function ConnectMcp() {
         delegateAddress,
         label,
         state,
+        redirect,
         postCallback,
     ])
 
@@ -261,9 +308,16 @@ export default function ConnectMcp() {
         if (!paramsValid) return
         sessionStorage.setItem(
             'memwal_mcp_connect',
-            JSON.stringify({ port, publicKey, delegateAddress, label, relayer, connectState: state }),
+            JSON.stringify({
+                // In redirect mode there is no meaningful port; keep whichever
+                // delivery params arrived so the resumed URL re-enters the same
+                // mode. Empty values are dropped (they'd fail validation as "").
+                ...(port ? { port } : {}),
+                ...(redirect ? { redirect } : {}),
+                publicKey, delegateAddress, label, relayer, connectState: state,
+            }),
         )
-    }, [paramsValid, port, publicKey, delegateAddress, label, relayer, state])
+    }, [paramsValid, port, redirect, publicKey, delegateAddress, label, relayer, state])
 
     // If the wallet popup completes after we asked it to open, auto-proceed.
     useEffect(() => {
@@ -310,6 +364,7 @@ export default function ConnectMcp() {
                             label={label}
                             delegateAddress={delegateAddress}
                             relayer={relayer}
+                            returnOrigin={redirect ? new URL(redirect).origin : null}
                             wallet={currentAccount?.address ?? null}
                             onConnect={handleConnect}
                         />
@@ -327,7 +382,11 @@ export default function ConnectMcp() {
                     {paramsValid && step === 'callback' && (
                         <div className="setup-classic-intro">
                             <h2 className="setup-classic-title">Wrapping up…</h2>
-                            <p className="setup-classic-description">Sending credentials back to your MCP client.</p>
+                            <p className="setup-classic-description">
+                                {redirect
+                                    ? `Returning you to ${new URL(redirect).origin}…`
+                                    : 'Sending credentials back to your MCP client.'}
+                            </p>
                         </div>
                     )}
 
@@ -391,12 +450,15 @@ function ConsentCard({
     label,
     delegateAddress,
     relayer,
+    returnOrigin,
     wallet,
     onConnect,
 }: {
     label: string
     delegateAddress: string
     relayer: string
+    /** Redirect-mode only: origin the browser returns to after approval. */
+    returnOrigin: string | null
     wallet: string | null
     onConnect: () => void
 }) {
@@ -421,6 +483,12 @@ function ConsentCard({
                 <div style={dividerStyle} />
 
                 <p style={cardLabelStyle}>Details</p>
+                {returnOrigin && (
+                    <div style={detailRowStyle}>
+                        <span style={detailLabelStyle}>Returns you to</span>
+                        <span style={detailValueStyle}>{returnOrigin}</span>
+                    </div>
+                )}
                 <div style={detailRowStyle}>
                     <span style={detailLabelStyle}>Relayer</span>
                     <span style={detailValueStyle}>{relayer}</span>

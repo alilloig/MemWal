@@ -279,6 +279,10 @@ function AppContent() {
         delegateKey ? <Playground /> : <Navigate to="/dashboard" replace />
       )} />
       <Route path="/connect/mcp" element={<ConnectMcp />} />
+      {/* Same consent flow, redirect delivery — for web apps that can't run a
+          localhost listener (e.g. the SDK inspector sample). OAuth resume still
+          lands on /connect/mcp; the component behaves identically on both paths. */}
+      <Route path="/connect/app" element={<ConnectMcp />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
