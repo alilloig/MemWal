@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { MemoryBlob, SuiNetwork } from "../types";
-import { formatBytes, short, suiObjectUrl, walruscanBlobUrl } from "../lib/format";
 import { Snippet } from "./Snippet";
+import { ShardGrid } from "./ShardGrid";
 
 interface Props {
     blobs: MemoryBlob[];
@@ -99,69 +99,11 @@ const res = await memwal.recall({ query: "everything", limit: 100, namespace })
 
             {!loading && visible.length === 0 ? (
                 <p className="empty">
-                    No memories found on-chain for this account
-                    {nsFilter ? ` in namespace "${nsFilter}"` : ""}. Store one below, then
-                    refresh.
+                    The vault is empty{nsFilter ? ` in namespace "${nsFilter}"` : ""} — no
+                    shards on-chain yet. Inscribe one in the Scriptorium, then refresh.
                 </p>
             ) : (
-                <div className="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Text</th>
-                                <th>Namespace</th>
-                                <th>Agent</th>
-                                <th>Size</th>
-                                <th>Registered</th>
-                                <th>Expires</th>
-                                <th>Blob</th>
-                                <th>Sui object</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {visible.map((b) => (
-                                <tr key={b.objectId}>
-                                    <td className="text-cell">
-                                        {b.text !== undefined ? (
-                                            b.text
-                                        ) : (
-                                            <span className="encrypted">🔒 encrypted</span>
-                                        )}
-                                    </td>
-                                    <td>
-                                        <code>{b.namespace}</code>
-                                    </td>
-                                    <td>{b.agentId ? <code>{b.agentId}</code> : "—"}</td>
-                                    <td>{formatBytes(b.size)}</td>
-                                    <td>{b.registeredEpoch ?? "—"}</td>
-                                    <td>
-                                        {b.endEpoch !== null ? `epoch ${b.endEpoch}` : "—"}
-                                    </td>
-                                    <td className="mono">
-                                        <a
-                                            href={walruscanBlobUrl(network, b.blobId)}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            title={b.blobId}
-                                        >
-                                            {short(b.blobId, 6, 4)}
-                                        </a>
-                                    </td>
-                                    <td className="mono">
-                                        <a
-                                            href={suiObjectUrl(network, b.objectId)}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            title={b.objectId}
-                                        >
-                                            {short(b.objectId, 6, 4)}
-                                        </a>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <ShardGrid blobs={visible} network={network} />
             )}
         </section>
     );

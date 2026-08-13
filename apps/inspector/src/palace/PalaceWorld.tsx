@@ -97,7 +97,19 @@ interface Props {
 
 export function PalaceWorld({ console: consolePanel, topRight, onRoomChange }: Props) {
     const hostRef = useRef<HTMLDivElement>(null);
+    const consoleRef = useRef<HTMLElement>(null);
     const [room, setRoom] = useState(0);
+
+    // Retrigger the console's entrance animation on every room change without
+    // remounting its children (panel state must survive the walk).
+    useEffect(() => {
+        const el = consoleRef.current;
+        if (!el) return;
+        el.classList.remove("palace-console--enter");
+        // force reflow so the animation restarts
+        void el.offsetWidth;
+        el.classList.add("palace-console--enter");
+    }, [room]);
 
     useEffect(() => {
         const host = hostRef.current;
@@ -131,7 +143,7 @@ export function PalaceWorld({ console: consolePanel, topRight, onRoomChange }: P
             {topRight && <div className="palace-topright">{topRight}</div>}
             {/* Panels stay mounted across room switches (search results and
                 form state survive); visibility is toggled by the parent. */}
-            <aside className="palace-console" data-room={ROOMS[room].id}>
+            <aside ref={consoleRef} className="palace-console" data-room={ROOMS[room].id}>
                 <div className="palace-console__inner">{consolePanel}</div>
             </aside>
         </>
