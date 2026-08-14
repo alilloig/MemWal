@@ -6,12 +6,21 @@ import { createSuiClient, fetchAccount, fetchMemoryBlobs } from "./lib/chain";
 import { consumeDashboardCallback } from "./lib/connect";
 import { SettingsForm } from "./components/SettingsForm";
 import { OverviewCards } from "./components/OverviewCards";
-import { InventoryTable } from "./components/InventoryTable";
 import { SearchPanel } from "./components/SearchPanel";
 import { ActionsPanel } from "./components/ActionsPanel";
-import { PalaceWorld } from "./palace/PalaceWorld";
+import { NamespaceConsole, ShelfShards } from "./components/NamespaceRoom";
+import { PalaceNav } from "./palace/PalaceNav";
+import {
+    ROTUNDA_SLOTS,
+    STATIC_SCENES,
+    namespaceScene,
+    variantFor,
+    type SceneDef,
+    type SceneId,
+} from "./palace/scenes";
 
 export function App() {
+    const [justConnected, setJustConnected] = useState(false);
     const [settings, setSettings] = useState<InspectorSettings | null>(() => {
         // Returning from the dashboard connect flow? The URL fragment carries
         // the account info; the delegate key waited in sessionStorage.
@@ -22,19 +31,25 @@ export function App() {
         }
         return loadSettings();
     });
+    // The dashboard round-trip counts as "just connected" — play the doors.
+    useEffect(() => {
+        if (settings && consumeDashboardCallback()) setJustConnected(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const [editing, setEditing] = useState(false);
 
     if (!settings) {
-        // The visitor stands at the gates: the palace flight runs behind a
-        // single console holding the connect flow.
         return (
-            <PalaceWorld
+            <PalaceNav
+                scene={STATIC_SCENES.gates}
+                onNavigate={() => {}}
                 console={
                     <SettingsForm
                         initial={DEFAULT_SETTINGS}
                         onSave={(s) => {
                             saveSettings(s);
                             setSettings(s);
+                            setJustConnected(true);
                         }}
                     />
                 }
@@ -44,14 +59,16 @@ export function App() {
 
     return (
         <>
-            <Inspector
+            <Palace
                 // Remount when the account changes so no stale state leaks across accounts.
                 key={`${settings.accountId}-${settings.network}`}
                 settings={settings}
+                enterThroughGates={justConnected}
                 onEdit={() => setEditing(true)}
                 onDisconnect={() => {
                     clearSettings();
                     setSettings(null);
+                    setJustConnected(false);
                 }}
             />
             {editing && (
@@ -71,50 +88,14 @@ export function App() {
     );
 }
 
-/** Room 0 console — connection summary while standing at the gates. */
-function GateCard({
-    accountId,
-    health,
-    healthError,
-}: {
-    accountId: string;
-    health: HealthResult | null;
-    healthError: string | null;
-}) {
-    return (
-        <section>
-            <div className="section-head">
-                <h2>THE GATES</h2>
-            </div>
-            <div className="card account-card">
-                <p className="hint">
-                    You are connected to this palace. Scroll to walk its rooms — each one
-                    is a live view over the same account, powered by the SDK call named on
-                    its plaque.
-                </p>
-                <div className="stat">
-                    <span className="stat-label">account</span>
-                    <span className="stat-value" style={{ fontSize: "0.8rem", wordBreak: "break-all" }}>
-                        {accountId}
-                    </span>
-                </div>
-                <div className="stat">
-                    <span className="stat-label">relayer</span>
-                    <span className={`stat-value ${healthError ? "err" : "ok"}`} style={{ fontSize: "1rem" }}>
-                        {healthError ? "unreachable" : health ? `ok · v${health.version ?? "?"}` : "…"}
-                    </span>
-                </div>
-            </div>
-        </section>
-    );
-}
-
-function Inspector({
+function Palace({
     settings,
+    enterThroughGates,
     onEdit,
     onDisconnect,
 }: {
     settings: InspectorSettings;
+    enterThroughGates: boolean;
     onEdit: () => void;
     onDisconnect: () => void;
 }) {
@@ -135,29 +116,41 @@ function Inspector({
         [resolved],
     );
 
-    const [room, setRoom] = useState(0);
+    // ---- palace position ----
+    const [sceneId, setSceneId] = useState<SceneId>(enterThroughGates ? "gates" : "atrium");
+    const [cinematic, setCinematic] = useState<string | null>(
+        enterThroughGates ? "/palace/gates.mp4" : null,
+    );
+    const endCinematic = useCallback(() => {
+        setCinematic(null);
+        setSceneId("atrium");
+    }, []);
+    const [selectedShard, setSelectedShard] = useState<string | null>(null);
+    const navigate = useCallback((to: SceneId) => {
+        setSelectedShard(null);
+        setSceneId(to);
+    }, []);
+
+    // ---- account data ----
     const [health, setHealth] = useState<HealthResult | null>(null);
     const [healthError, setHealthError] = useState<string | null>(null);
     const [account, setAccount] = useState<AccountInfo | null>(null);
     const [blobs, setBlobs] = useState<MemoryBlob[]>([]);
     const [loading, setLoading] = useState(true);
-    const [progress, setProgress] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [revealing, setRevealing] = useState(false);
 
     const refresh = useCallback(async () => {
         setLoading(true);
         setError(null);
-        setProgress("Reading MemWalAccount…");
         try {
             const acct = await fetchAccount(suiClient, resolved.accountId);
             setAccount(acct);
-            setProgress("Listing Walrus blob objects…");
             const found = await fetchMemoryBlobs(
                 suiClient,
                 acct.owner,
                 resolved.walrusPackageId,
-                setProgress,
+                () => {},
             );
             // Keep any plaintext already revealed for blobs that still exist.
             setBlobs((prev) => {
@@ -173,7 +166,6 @@ function Inspector({
             setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
-            setProgress(null);
         }
     }, [suiClient, resolved]);
 
@@ -186,10 +178,9 @@ function Inspector({
     }, [memwal, refresh]);
 
     /**
-     * "Reveal text" = the recall-join trick. The SDK has no get-by-blob-id, so
-     * we run a broad recall (top 100 by similarity) for the namespace and join
-     * results onto the on-chain rows by blob_id. Rows that don't surface stay
-     * encrypted — an honest illustration of the privacy model.
+     * "Decrypt room" = the recall-join trick. The SDK has no get-by-blob-id,
+     * so we run a broad recall (top 100 by similarity) for the namespace and
+     * join results onto the shards by blob_id.
      */
     const reveal = useCallback(
         async (namespace: string) => {
@@ -222,63 +213,165 @@ function Inspector({
         [blobs],
     );
 
-    // All rooms stay mounted; only the active one is shown, so results and
-    // form state survive the walk through the palace.
-    const show = (i: number): React.CSSProperties => ({ display: room === i ? "block" : "none" });
+    // ---- scene resolution ----
+    const scene: SceneDef = useMemo(() => {
+        if (sceneId.startsWith("ns:")) return namespaceScene(sceneId.slice(3));
+        const base = STATIC_SCENES[sceneId as Exclude<SceneId, `ns:${string}`>];
+        if (sceneId !== "vault") return base;
+        // The rotunda's doorways = the account's namespaces.
+        return {
+            ...base,
+            hotspots: [
+                ...namespaces.slice(0, ROTUNDA_SLOTS.length).map((ns, i) => ({
+                    to: `ns:${ns}` as SceneId,
+                    label: ns,
+                    x: ROTUNDA_SLOTS[i].x,
+                    y: ROTUNDA_SLOTS[i].y,
+                    kind: "door" as const,
+                })),
+                ...base.hotspots,
+            ],
+        };
+    }, [sceneId, namespaces]);
+
+    const currentNs = sceneId.startsWith("ns:") ? sceneId.slice(3) : null;
+    const nsBlobs = useMemo(
+        () => (currentNs ? blobs.filter((b) => b.namespace === currentNs) : []),
+        [blobs, currentNs],
+    );
+
+    const consolePanel = (() => {
+        switch (sceneId) {
+            case "gates":
+                return null;
+            case "atrium":
+                return (
+                    <OverviewCards
+                        health={health}
+                        healthError={healthError}
+                        account={account}
+                        accountId={resolved.accountId}
+                        blobs={blobs}
+                        network={resolved.network}
+                    />
+                );
+            case "vault":
+                return (
+                    <VaultHubPanel
+                        blobs={blobs}
+                        namespaces={namespaces}
+                        loading={loading}
+                        error={error}
+                        onRefresh={refresh}
+                        onEnter={(ns) => navigate(`ns:${ns}`)}
+                    />
+                );
+            case "observatory":
+                return (
+                    <SearchPanel
+                        memwal={memwal}
+                        namespaces={namespaces}
+                        defaultNamespace={resolved.namespace}
+                        network={resolved.network}
+                    />
+                );
+            case "scriptorium":
+                return (
+                    <ActionsPanel
+                        memwal={memwal}
+                        defaultNamespace={resolved.namespace}
+                        onChanged={refresh}
+                    />
+                );
+            default:
+                return (
+                    <NamespaceConsole
+                        namespace={currentNs!}
+                        blobs={nsBlobs}
+                        network={resolved.network}
+                        selectedId={selectedShard}
+                        revealing={revealing}
+                        onReveal={() => reveal(currentNs!)}
+                        onSelect={setSelectedShard}
+                    />
+                );
+        }
+    })();
 
     return (
-        <PalaceWorld
-            onRoomChange={setRoom}
+        <PalaceNav
+            scene={scene}
+            onNavigate={navigate}
+            cinematic={cinematic}
+            onCinematicEnd={endCinematic}
+            console={consolePanel}
+            overlay={
+                currentNs ? (
+                    <ShelfShards blobs={nsBlobs} selectedId={selectedShard} onSelect={setSelectedShard} />
+                ) : null
+            }
             topRight={
                 <>
                     <button onClick={onEdit}>Settings</button>
                     <button onClick={onDisconnect}>Disconnect</button>
                 </>
             }
-            console={
-                <>
-                    <div style={show(0)}>
-                        <GateCard accountId={resolved.accountId} health={health} healthError={healthError} />
-                    </div>
-                    <div style={show(1)}>
-                        <OverviewCards
-                            health={health}
-                            healthError={healthError}
-                            account={account}
-                            accountId={resolved.accountId}
-                            blobs={blobs}
-                            network={resolved.network}
-                        />
-                    </div>
-                    <div style={show(2)}>
-                        <InventoryTable
-                            blobs={blobs}
-                            network={resolved.network}
-                            loading={loading}
-                            progress={progress}
-                            error={error}
-                            revealing={revealing}
-                            onRefresh={refresh}
-                            onReveal={reveal}
-                        />
-                    </div>
-                    <div style={show(3)}>
-                        <SearchPanel
-                            memwal={memwal}
-                            namespaces={namespaces}
-                            defaultNamespace={resolved.namespace}
-                            network={resolved.network}
-                        />
-                    </div>
-                    <div style={show(4)}>
-                        <ActionsPanel
-                            memwal={memwal}
-                            defaultNamespace={resolved.namespace}
-                            onChanged={refresh}
-                        />
-                    </div>
-                </>
-            }
         />
+    );
+}
+
+/** The rotunda's console: every doorway, including any beyond the visible seven. */
+function VaultHubPanel({
+    blobs,
+    namespaces,
+    loading,
+    error,
+    onRefresh,
+    onEnter,
+}: {
+    blobs: MemoryBlob[];
+    namespaces: string[];
+    loading: boolean;
+    error: string | null;
+    onRefresh: () => void;
+    onEnter: (ns: string) => void;
+}) {
+    return (
+        <section>
+            <div className="section-head">
+                <h2>The Vault</h2>
+                <div className="section-actions">
+                    <button onClick={onRefresh} disabled={loading}>
+                        {loading ? "Reading chain…" : "Refresh from chain"}
+                    </button>
+                </div>
+            </div>
+            <p className="hint">
+                Each doorway is a namespace — the <code>memwal_namespace</code> metadata of
+                your on-chain blobs. Click a glowing door (or a row below) to step into
+                that room. Every namespace gets its own chamber; no two look quite alike.
+            </p>
+            {error && <p className="error">{error}</p>}
+            <div className="vault-list">
+                {namespaces.map((ns) => {
+                    const inNs = blobs.filter((b) => b.namespace === ns);
+                    const sealed = inNs.filter((b) => b.text === undefined).length;
+                    const v = variantFor(ns);
+                    return (
+                        <button key={ns} className="vault-list__row" onClick={() => onEnter(ns)}>
+                            <span className="vault-list__dot" style={{ background: v.accent }} />
+                            <span className="vault-list__ns">{ns}</span>
+                            <span className="vault-list__meta">
+                                {inNs.length} shard{inNs.length === 1 ? "" : "s"}
+                                {sealed > 0 ? ` · ${sealed} sealed` : " · all lit"}
+                            </span>
+                        </button>
+                    );
+                })}
+                {namespaces.length === 0 && !loading && (
+                    <p className="empty">No namespaces yet — inscribe a first memory in the Scriptorium.</p>
+                )}
+            </div>
+        </section>
     );
 }
