@@ -43,9 +43,12 @@ export function PalaceNav({
 
     // Cross-fade the clip's final frame onto the room still (seedance lands
     // near the --end-image but not pixel-exact), then unmount it.
+    const fadeRef = useRef<number | null>(null);
     const finishCinematic = useCallback(() => {
         setCineOut(true);
-        setTimeout(() => {
+        if (fadeRef.current) clearTimeout(fadeRef.current);
+        fadeRef.current = window.setTimeout(() => {
+            fadeRef.current = null;
             setCineOut(false);
             onCinematicEnd?.();
         }, 360);
@@ -80,6 +83,13 @@ export function PalaceNav({
     const [cineIn, setCineIn] = useState(false); // overlay revealed once the clip paints
     useEffect(() => {
         setCineIn(false);
+        // A new clip (or none) arrives: drop any pending fade-out from the
+        // previous clip, so its 360ms timer can't null this one mid-play.
+        setCineOut(false);
+        if (fadeRef.current) {
+            clearTimeout(fadeRef.current);
+            fadeRef.current = null;
+        }
         const v = videoRef.current;
         if (!v || !cinematic) return;
         v.playbackRate = 1.9;

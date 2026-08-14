@@ -6,7 +6,7 @@ rm -f gen-rooms2.log
 recolor() {
   local name="$1"; local color="$2"
   higgsfield generate create nano_banana_flash \
-    --prompt "Recolor this exact crystal library chamber to ${color} crystal material and light. Keep the IDENTICAL niche grid layout (6 columns, 3 rows of empty upright niches), the same camera, framing, pedestal and composition — change only the crystal colour and glow. No people, no text." \
+    --prompt "Recolor this exact crystal library chamber to ${color} crystal material and light. Keep the IDENTICAL niche grid layout (7 columns, 3 rows of empty upright niches), the same camera, framing, pedestal and composition — change only the crystal colour and glow. No people, no text." \
     --image room2_glacial.png --aspect_ratio 16:9 \
     --wait --wait-timeout 15m --json > "room2_${name}.json" 2> "room2_${name}.err"
   local url=$(python3 -c "import json;d=json.load(open('room2_${name}.json'));i=d[0] if isinstance(d,list) else d;print(i.get('result_url') or '')" 2>/dev/null)

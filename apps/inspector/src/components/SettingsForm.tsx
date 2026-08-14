@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { InspectorSettings, SuiNetwork } from "../types";
 import { SUI_GRPC_URLS, WALRUS_PACKAGE_IDS } from "../config";
 import { beginDashboardConnect } from "../lib/connect";
+
+// How long to wait for the popup to signal back before giving up. The connect
+// completes by the popup broadcasting to this tab (App's onConnected), which
+// unmounts this form; if that never happens (popup closed, dashboard 404, a
+// rejected callback) the watchdog below clears the busy state instead of
+// leaving the button stuck on "Waiting for the dashboard…" forever.
+const CONNECT_TIMEOUT_MS = 180_000;
+const POPUP_POLL_MS = 500;
 
 interface Props {
     initial: InspectorSettings;
@@ -16,6 +24,16 @@ export function SettingsForm({ initial, onSave, onCancel }: Props) {
     const [showManual, setShowManual] = useState(!!onCancel);
     const [connecting, setConnecting] = useState(false);
     const [connectError, setConnectError] = useState<string | null>(null);
+    const watchdog = useRef<{ poll?: number; timer?: number }>({});
+
+    function clearWatchdog() {
+        if (watchdog.current.poll) clearInterval(watchdog.current.poll);
+        if (watchdog.current.timer) clearTimeout(watchdog.current.timer);
+        watchdog.current = {};
+    }
+    // On success the form unmounts (App swaps to the connected phase); make sure
+    // the watchdog timers don't outlive it.
+    useEffect(() => clearWatchdog, []);
 
     function set<K extends keyof InspectorSettings>(key: K, value: InspectorSettings[K]) {
         setForm((f) => ({ ...f, [key]: value }));
@@ -45,9 +63,29 @@ export function SettingsForm({ initial, onSave, onCancel }: Props) {
                 namespace: form.namespace.trim() || "default",
                 popup,
             });
-            // Popup is under way — keep the button busy until it signals back.
+            // Popup is under way — keep the button busy until it signals back,
+            // but arm a watchdog so a closed/abandoned/404 popup can't leave the
+            // tab stuck on "Waiting for the dashboard…". Success unmounts us and
+            // the effect above clears these.
+            clearWatchdog();
+            const give_up = (msg: string) => {
+                clearWatchdog();
+                setConnecting(false);
+                setConnectError(msg);
+            };
+            if (popup) {
+                watchdog.current.poll = window.setInterval(() => {
+                    if (popup.closed)
+                        give_up("The connect window closed before finishing. Try again, or use manual setup below.");
+                }, POPUP_POLL_MS);
+            }
+            watchdog.current.timer = window.setTimeout(
+                () => give_up("Connection timed out. Try again, or use manual setup below."),
+                CONNECT_TIMEOUT_MS,
+            );
         } catch (e) {
             popup?.close();
+            clearWatchdog();
             setConnectError(e instanceof Error ? e.message : String(e));
             setConnecting(false);
         }

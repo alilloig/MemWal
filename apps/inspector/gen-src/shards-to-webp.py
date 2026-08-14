@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Convert the crystal shards (glow on pure black) into transparent PNGs by
-# keying luminance → alpha, so the black drops out and the glow keeps a soft
+# Convert the crystal shards (glow on pure black) into transparent WEBP images
+# by keying luminance → alpha, so the black drops out and the glow keeps a soft
 # edge. Composited normally in the app (no fragile mix-blend-mode).
 import os
 from PIL import Image

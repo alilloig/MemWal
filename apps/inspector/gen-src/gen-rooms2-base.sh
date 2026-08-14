@@ -3,7 +3,7 @@
 # so one shelf-anchor set aligns crystals in every recolored variant.
 cd "$(dirname "$0")"
 STYLE=$(cat style.txt)
-SUBJECT="First-person straight-on eye-level view of a small crystal library chamber. A perfectly FLAT front-facing back wall fills the frame, holding a symmetric grid of exactly 6 columns and 3 rows of identical empty upright arched niches, evenly spaced with equal margins between them, each niche a shallow softly-glowing recess ready to hold a single crystal (the niches are EMPTY). A slender crystal reading pedestal centered at the very bottom. Perfectly symmetric, centered, eye-level, minimal perspective distortion. Glacial ice-blue crystal material, pale frost-white light. No people, no text."
+SUBJECT="First-person straight-on eye-level view of a small crystal library chamber. A perfectly FLAT front-facing back wall fills the frame, holding a symmetric grid of exactly 7 columns and 3 rows of identical empty upright arched niches, evenly spaced with equal margins between them, each niche a shallow softly-glowing recess ready to hold a single crystal (the niches are EMPTY). A slender crystal reading pedestal centered at the very bottom. Perfectly symmetric, centered, eye-level, minimal perspective distortion. Glacial ice-blue crystal material, pale frost-white light. No people, no text."
 higgsfield generate create nano_banana_flash \
   --prompt "${STYLE} ${SUBJECT} Match the visual style and lighting of the reference image." \
   --image gates.png --aspect_ratio 16:9 \

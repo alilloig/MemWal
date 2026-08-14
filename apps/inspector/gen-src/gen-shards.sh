@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Generate one luminous memory-crystal per room variant, on a PURE BLACK
-# background so the app can composite with mix-blend-mode:screen (black drops
-# out, the glow blends additively into the shelves). 2 at a time (plan limit).
+# background. shards-to-webp.py keys that black to an alpha channel so the shard
+# composites normally in the app (no mix-blend-mode). 2 at a time (plan limit).
 cd "$(dirname "$0")"
 rm -f gen-shards.log
 P="A single luminous faceted crystal shard standing upright, a glowing memory crystal lit from within, translucent gemstone facets with sharp clean edges, soft radiant bloom and light rays, COLORWORD radiance, floating centered on a pure solid black background, cinematic product render, high detail, no text, no logos, no people."

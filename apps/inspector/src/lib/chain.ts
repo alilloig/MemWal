@@ -121,9 +121,12 @@ async function fetchBlobAttributes(
         const bytes = res?.dynamicField?.value?.bcs;
         if (!bytes) return new Map();
         return WALRUS_METADATA_BCS.parse(bytes).metadata as Map<string, string>;
-    } catch {
-        // No dynamic field = no metadata: a Walrus blob that isn't a memory,
-        // or one written before metadata tagging. Callers filter these out.
+    } catch (err) {
+        // Usually "no metadata dynamic field": a Walrus blob that isn't a
+        // memory, or one written before metadata tagging — callers filter
+        // these out. A transient gRPC/parse error lands here too, though, and
+        // would silently drop a real memory, so leave a breadcrumb for that.
+        console.warn(`memwal: could not read metadata for ${objectId}`, err);
         return new Map();
     }
 }
@@ -146,6 +149,7 @@ export async function fetchMemoryBlobs(
     // Guard against a server that never advances the cursor: cap the pages so a
     // repeated cursor can't spin forever with the UI stuck on "Reading chain…".
     const MAX_PAGES = 200;
+    let truncated = true;
     for (let page = 0; page < MAX_PAGES; page++) {
         const res = await (client as any).listOwnedObjects({
             owner,
@@ -159,9 +163,17 @@ export async function fetchMemoryBlobs(
                 raw.push({ objectId: obj.objectId, json: obj.json ?? {} });
             }
         }
-        if (!res?.hasNextPage || !res?.cursor || res.cursor === cursor) break;
+        if (!res?.hasNextPage || !res?.cursor || res.cursor === cursor) {
+            truncated = false;
+            break;
+        }
         cursor = res.cursor;
         onProgress?.(`Found ${raw.length} blob objects so far…`);
+    }
+    if (truncated) {
+        console.warn(
+            `memwal: stopped enumerating after ${MAX_PAGES} pages (~${raw.length} blobs); inventory may be incomplete.`,
+        );
     }
 
     onProgress?.(`Reading metadata for ${raw.length} blob objects…`);

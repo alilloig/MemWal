@@ -201,9 +201,13 @@ function readCallback(): InspectorSettings | null {
     try {
         pending = JSON.parse(rawPending) as PendingConnect;
     } catch {
+        console.warn("memwal connect: pending record is corrupt — ignoring callback.");
         return null;
     }
-    if (state !== pending.state) return null;
+    if (state !== pending.state) {
+        console.warn("memwal connect: state token mismatch — ignoring callback (stale or forged return).");
+        return null;
+    }
 
     // Accept only the networks the inspector enumerates on; an unrecognised
     // value (e.g. a dashboard on devnet/localnet) would otherwise silently
@@ -211,7 +215,10 @@ function readCallback(): InspectorSettings | null {
     const reported = frag.get("network");
     const network: SuiNetwork | null =
         reported === "mainnet" || reported === "testnet" ? reported : null;
-    if (!network) return null;
+    if (!network) {
+        console.warn(`memwal connect: dashboard reported unsupported network "${reported}" — expected mainnet or testnet.`);
+        return null;
+    }
 
     return {
         delegateKey: pending.delegateKey,
