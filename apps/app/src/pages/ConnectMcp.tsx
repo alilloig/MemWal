@@ -18,16 +18,27 @@
  *   3. User clicks "Connect Sui Wallet" → standard dApp Kit wallet popup.
  *   4. Build + sign `add_delegate_key(account, registry, publicKey, label, clock)`
  *      via useSponsoredTransaction (matches SetupWizard pattern).
- *   5. POST result {accountId, walletAddress, packageId, txDigest, label}
- *      to http://localhost:<port>/callback — the MCP package's listener.
+ *   5. POST result {accountId, walletAddress, packageId, txDigest, label, state}
+ *      to http://127.0.0.1:<port>/callback — the MCP package's listener; the
+ *      bridge compares the echoed `state`.
  *   6. Show success screen — user can close the tab.
+ *
+ * Redirect mode (`/connect/app`): web apps that can't run a localhost listener
+ * pass `redirect=<http(s) url>` INSTEAD of `port`. Steps 2–4 are identical;
+ * step 1 (bridge preflight) does not run — there is no localhost bridge, so the
+ * redirect origin must instead be allowlisted (see isValidRedirect) and the
+ * requesting app verifies the state token itself on return. The result is
+ * delivered by navigating to the redirect URL with the payload plus `network`
+ * in the URL *fragment* (never sent to any server, invisible to logs/referrers).
+ * Everything in the fragment is public on-chain data — the delegate private
+ * key exists only in the requesting app, which generated it.
  *
  * Error paths:
  *   - Wallet not connected → wallet picker.
  *   - User has no Walrus Memory account yet → link to /setup.
  *   - Wallet rejects tx → retry button.
- *   - localhost callback unreachable → keep success on-chain anyway, ask user
- *     to manually copy creds (rare — only if the MCP listener died).
+ *   - localhost callback unreachable → registration stays on-chain; the success
+ *     card tells the user to re-run the MCP login command so creds save locally.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -54,6 +65,31 @@ type Step =
     | 'success'
     | 'no-account'
     | 'error'
+
+/**
+ * Redirect-mode targets must be on an origin the dashboard vouches for.
+ *
+ * The consent card grants a delegate key on the user's account — so an
+ * arbitrary redirect target is not a payload-confidentiality question (the
+ * fragment is public on-chain data) but a phishing one: any page could point
+ * `/connect/app` at itself and drive a genuine Walrus-branded consent into
+ * registering an attacker's key. This is redirect mode's analogue of the
+ * localhost bridge preflight: only allowlisted origins may initiate it.
+ * Localhost is always allowed (local dev / self-host testing); production
+ * deployers list their sample-app origins in VITE_CONNECT_REDIRECT_ORIGINS.
+ */
+function isValidRedirect(url: string): boolean {
+    let u: URL
+    try {
+        u = new URL(url)
+    } catch {
+        return false
+    }
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false
+    const host = u.hostname
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '[::1]'
+    return isLocal || config.connectRedirectOrigins.includes(u.origin)
+}
 
 function hexToBytes(hex: string): number[] {
     const clean = hex.startsWith('0x') ? hex.slice(2) : hex
@@ -116,13 +152,27 @@ export default function ConnectMcp() {
     const { mutateAsync: signAndExecute } = useSponsoredTransaction()
 
     const port = params.get('port') ?? ''
+    /**
+     * Redirect-mode delivery target (web apps, `/connect/app`). Mutually
+     * exclusive with `port` in practice; if both arrive, redirect wins —
+     * a web app can't have opened a localhost listener anyway.
+     */
+    const redirect = params.get('redirect') ?? ''
+    /**
+     * Display label for redirect mode (localhost mode gets it from the verified
+     * bridge). It reaches the on-chain add_delegate_key tx, so strip control
+     * characters and bound the length — a raw query param must not put
+     * arbitrary bytes on-chain or spoof a trusted name in the consent card.
+     */
+    // eslint-disable-next-line no-control-regex
+    const requestedLabel = (params.get('label') ?? '').replace(/[\u0000-\u001f]/g, '').slice(0, 48)
     const publicKey = params.get('publicKey') ?? ''
     const relayer = params.get('relayer') ?? config.memwalServerUrl
     /**
      * Cryptographic state token from the MCP bridge. Must be echoed verbatim
      * in the callback POST — the bridge constant-time compares it to defeat
-     * cross-origin CSRF (audit C2). Empty string if absent (older bridge);
-     * the bridge will then reject our callback with 400.
+     * cross-origin CSRF (audit C2). Empty or malformed here fails `paramsValid`,
+     * so the page shows "Invalid request" and never signs or delivers a callback.
      *
      * Read from `connectState` (current bridge) with a fallback to the legacy
      * `state` param. The bridge renamed this param away from `state` because
@@ -146,10 +196,11 @@ export default function ConnectMcp() {
     // Validate query string up-front.
     const paramsValid = useMemo(() => {
         const portNum = Number(port)
+        const deliveryValid = redirect
+            ? isValidRedirect(redirect)
+            : Number.isFinite(portNum) && portNum > 1024 && portNum < 65536
         return (
-            Number.isFinite(portNum) &&
-            portNum > 1024 &&
-            portNum < 65536 &&
+            deliveryValid &&
             /^[0-9a-fA-F]{64}$/.test(publicKey) &&
             // delegateAddress is derived on-chain (v1_new) and no longer sent
             // in the tx, so it is not required for a valid request.
@@ -158,7 +209,7 @@ export default function ConnectMcp() {
             // forces a bridge upgrade so we never accept stateless callbacks.
             /^[0-9a-f]{64}$/.test(state)
         )
-    }, [port, publicKey, state])
+    }, [port, redirect, publicKey, state])
 
     // Never trust/display the legacy delegateAddress query parameter. The
     // contract derives this same Sui address from the Ed25519 public key.
@@ -172,6 +223,24 @@ export default function ConnectMcp() {
             setVerifiedBridge(null)
             return
         }
+
+        // Redirect mode has no localhost bridge to preflight — the requesting
+        // web app generated the key itself and verifies the state token when
+        // the browser returns. The consent card's "Returns you to" origin is
+        // the user-facing trust surface here.
+        if (redirect) {
+            setVerifiedBridge({
+                publicKey,
+                label: requestedLabel || 'Web app',
+                // Show the dashboard's own relayer, not the unverified query
+                // param — the consent card must not present attacker-chosen
+                // text under the trusted "Relayer" label.
+                relayer: config.memwalServerUrl,
+            })
+            setStep('consent')
+            return
+        }
+
         const controller = new AbortController()
         setStep('verifying')
         setErrorMsg('')
@@ -209,7 +278,7 @@ export default function ConnectMcp() {
         })()
 
         return () => controller.abort()
-    }, [paramsValid, port, preflightAttempt, publicKey, relayer, state])
+    }, [paramsValid, port, redirect, requestedLabel, preflightAttempt, publicKey, relayer, state])
 
     const postCallback = useCallback(
         async (payload: McpCallbackPayload): Promise<boolean> => {
@@ -303,12 +372,28 @@ export default function ConnectMcp() {
             }
             setCallbackPayload(payload)
             setStep('callback')
+
+            if (redirect) {
+                // Redirect delivery: payload goes in the URL fragment —
+                // fragments never leave the browser (not sent to the target's
+                // server, absent from logs and Referer headers).
+                sessionStorage.removeItem('memwal_mcp_connect')
+                trackEvent('mcp_connect_complete', { callback_delivered: true, delivery: 'redirect' })
+                const target = new URL(redirect)
+                target.hash = new URLSearchParams({
+                    ...payload,
+                    network: config.suiNetwork,
+                }).toString()
+                window.location.assign(target.toString())
+                return
+            }
+
             const delivered = await postCallback(payload)
             // Flow done — drop the OAuth-resume breadcrumb so a later visit to
             // `/` goes to the dashboard instead of looping back here.
             sessionStorage.removeItem('memwal_mcp_connect')
             setStep('success')
-            trackEvent('mcp_connect_complete', { callback_delivered: delivered })
+            trackEvent('mcp_connect_complete', { callback_delivered: delivered, delivery: 'localhost' })
         } catch (err) {
             setErrorMsg(err instanceof Error ? err.message : String(err))
             setStep('error')
@@ -321,6 +406,7 @@ export default function ConnectMcp() {
         signAndExecute,
         verifiedBridge,
         state,
+        redirect,
         postCallback,
     ])
 
@@ -340,9 +426,17 @@ export default function ConnectMcp() {
         if (!paramsValid) return
         sessionStorage.setItem(
             'memwal_mcp_connect',
-            JSON.stringify({ port, publicKey, delegateAddress, relayer, connectState: state }),
+            JSON.stringify({
+                // In redirect mode there is no meaningful port; keep whichever
+                // delivery params arrived so the resumed URL re-enters the same
+                // mode (plus the display label redirect mode reads from the
+                // query string). Empty values are dropped.
+                ...(port ? { port } : {}),
+                ...(redirect ? { redirect, label: requestedLabel } : {}),
+                publicKey, delegateAddress, relayer, connectState: state,
+            }),
         )
-    }, [paramsValid, port, publicKey, delegateAddress, relayer, state])
+    }, [paramsValid, port, redirect, requestedLabel, publicKey, delegateAddress, relayer, state])
 
     // If the wallet popup completes after we asked it to open, auto-proceed.
     useEffect(() => {
@@ -399,6 +493,7 @@ export default function ConnectMcp() {
                             publicKey={verifiedBridge.publicKey}
                             delegateAddress={delegateAddress}
                             relayer={verifiedBridge.relayer}
+                            returnOrigin={redirect ? new URL(redirect).origin : null}
                             wallet={currentAccount?.address ?? null}
                             onConnect={handleConnect}
                         />
@@ -416,7 +511,11 @@ export default function ConnectMcp() {
                     {paramsValid && step === 'callback' && (
                         <div className="setup-classic-intro">
                             <h2 className="setup-classic-title">Wrapping up…</h2>
-                            <p className="setup-classic-description">Sending credentials back to your MCP client.</p>
+                            <p className="setup-classic-description">
+                                {redirect
+                                    ? `Returning you to ${new URL(redirect).origin}…`
+                                    : 'Sending credentials back to your MCP client.'}
+                            </p>
                         </div>
                     )}
 
@@ -485,6 +584,7 @@ function ConsentCard({
     publicKey,
     delegateAddress,
     relayer,
+    returnOrigin,
     wallet,
     onConnect,
 }: {
@@ -492,16 +592,19 @@ function ConsentCard({
     publicKey: string
     delegateAddress: string
     relayer: string
+    /** Redirect-mode only: origin the browser returns to after approval. */
+    returnOrigin: string | null
     wallet: string | null
     onConnect: () => void
 }) {
     return (
         <div className="setup-classic-intro">
             <h2 className="setup-classic-title">
-                A local MCP client is requesting access
+                {returnOrigin ? 'A web app is requesting access' : 'A local MCP client is requesting access'}
             </h2>
             <p className="setup-classic-description">
-                This local app calls itself <code style={codeStyle}>{label}</code>. This name is not verified.
+                {returnOrigin ? 'This app' : 'This local app'} calls itself{' '}
+                <code style={codeStyle}>{label}</code>. This name is not verified.
                 Approving grants persistent access until you revoke the delegate key on-chain.
             </p>
 
@@ -517,6 +620,12 @@ function ConsentCard({
                 <div style={dividerStyle} />
 
                 <p style={cardLabelStyle}>Details</p>
+                {returnOrigin && (
+                    <div style={detailRowStyle}>
+                        <span style={detailLabelStyle}>Returns you to</span>
+                        <span style={detailValueStyle}>{returnOrigin}</span>
+                    </div>
+                )}
                 <div style={detailRowStyle}>
                     <span style={detailLabelStyle}>Relayer</span>
                     <span style={detailValueStyle}>{relayer}</span>

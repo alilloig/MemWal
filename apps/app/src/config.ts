@@ -112,4 +112,11 @@ export const config = {
             const [label, url] = entry.split('|').map(s => s.trim())
             return url ? { label, url } : { label: label, url: label }
         }),
+    // Origins allowed to drive the redirect-mode connect flow (/connect/app).
+    // The consent card grants a delegate key on the user's account, so only
+    // apps the dashboard vouches for may initiate it — an arbitrary redirect
+    // target could phish a key grant behind genuine branding. Localhost is
+    // always allowed (local dev / self-host testing); production deployers
+    // add their sample-app origins here.
+    connectRedirectOrigins: parseCsv(import.meta.env.VITE_CONNECT_REDIRECT_ORIGINS as string | undefined),
 } as const

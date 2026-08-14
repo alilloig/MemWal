@@ -1,0 +1,631 @@
+/* ============================================================
+   Walrus Memory Palace — theme, console layer, click navigation
+   ============================================================ */
+
+:root {
+    --sw-bg: #070912;
+    --sw-ink: #eaf6ff;
+    --sw-ink-soft: #8fa3bf;
+    --sw-accent: #67e8f9;
+    /* Marcellus reads like letters carved into the crystal; Schibsted keeps
+       the working panels crisp. */
+    --sw-font-display: "Marcellus", "Times New Roman", serif;
+    --sw-font-body: "Schibsted Grotesk", -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+    background: var(--sw-bg);
+    font-family: var(--sw-font-body);
+}
+
+.palace-console .section-head h2 {
+    font-family: var(--sw-font-display);
+}
+
+/* ---------- the live console (right side, per-room) ---------- */
+.palace-console {
+    position: fixed;
+    right: clamp(14px, 3vw, 44px);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 220;
+    width: min(480px, 40vw);
+    max-height: 76vh;
+    display: flex;
+}
+
+.palace-console--enter {
+    animation: palace-console-in 620ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .palace-console--enter {
+        animation: none;
+    }
+}
+
+@keyframes palace-console-in {
+    from {
+        opacity: 0;
+        transform: translateY(calc(-50% + 26px));
+        filter: blur(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%);
+        filter: blur(0);
+    }
+}
+
+.palace-console__inner {
+    width: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 18px;
+    padding: 20px 20px 22px;
+    background: linear-gradient(
+        160deg,
+        rgba(14, 22, 44, 0.72),
+        rgba(9, 13, 28, 0.78)
+    );
+    border: 1px solid color-mix(in srgb, var(--sw-accent, #67e8f9) 32%, transparent);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 24px 70px rgba(0, 0, 0, 0.55),
+        0 0 42px color-mix(in srgb, var(--sw-accent, #67e8f9) 12%, transparent);
+    backdrop-filter: blur(18px) saturate(1.2);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--sw-accent, #67e8f9) 40%, transparent) transparent;
+}
+
+/* ---------- restyle the classic panels for crystal glass ---------- */
+.palace-console section {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.palace-console .section-head {
+    margin: 0 0 10px;
+}
+
+.palace-console .section-head h2 {
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    color: color-mix(in srgb, var(--sw-accent, #67e8f9) 85%, #fff);
+}
+
+.palace-console .card {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(148, 190, 255, 0.14);
+    border-radius: 12px;
+}
+
+.palace-console .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.palace-console .stat-value {
+    text-shadow: 0 0 18px color-mix(in srgb, var(--sw-accent, #67e8f9) 45%, transparent);
+}
+
+.palace-console input,
+.palace-console select,
+.palace-console textarea {
+    background: rgba(7, 11, 24, 0.65);
+    border-color: rgba(148, 190, 255, 0.2);
+}
+
+.palace-console button.primary {
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--sw-accent, #67e8f9) 85%, #fff),
+        color-mix(in srgb, var(--sw-accent, #67e8f9) 55%, #6366f1)
+    );
+    color: #05070f;
+    border: 0;
+    box-shadow: 0 4px 24px color-mix(in srgb, var(--sw-accent, #67e8f9) 35%, transparent);
+}
+
+.palace-console .settings-form {
+    max-width: none;
+    margin: 0;
+    padding: 4px 2px;
+    background: transparent;
+    border: 0;
+}
+
+.palace-console .settings-form h2 {
+    font-size: 1.05rem;
+}
+
+/* Room-flavoured console glow: the navigator sets --accent per scene
+   (namespace rooms included), so the console just inherits it. */
+.palace-console .palace-console__inner {
+    --sw-accent: var(--accent, #67e8f9);
+}
+
+/* ---------- narrow screens: console becomes a bottom sheet ---------- */
+@media (max-width: 980px) {
+    .palace-console {
+        right: 10px;
+        left: 10px;
+        top: auto;
+        bottom: 12px;
+        transform: none;
+        width: auto;
+        max-height: 46vh;
+    }
+
+    @keyframes palace-console-in {
+        from {
+            opacity: 0;
+            transform: translateY(26px);
+            filter: blur(6px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+            filter: blur(0);
+        }
+    }
+}
+
+/* ---------- shard metadata rows (shared by the detail card) ---------- */
+.shard__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--sw-ink-soft);
+    letter-spacing: 0.04em;
+}
+
+.shard__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    cursor: default;
+}
+
+.shard__links a {
+    color: color-mix(in srgb, var(--sw-accent, #38bdf8) 85%, #fff);
+    text-decoration: none;
+}
+
+.shard__links a:hover {
+    text-decoration: underline;
+}
+
+.shard__agent {
+    color: var(--sw-ink-soft);
+}
+
+/* ============================================================
+   Click navigation (graphic-adventure mode)
+   ============================================================ */
+
+.nav-root {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--sw-bg);
+}
+
+.nav-scene {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    transform-origin: var(--origin-x, 50%) var(--origin-y, 50%);
+}
+
+.nav-scene--arriving {
+    animation: scene-arrive 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.nav-scene--leaving {
+    animation: scene-leave 480ms cubic-bezier(0.5, 0, 0.8, 0.4) both;
+}
+
+@keyframes scene-leave {
+    from { transform: scale(1); opacity: 1; filter: blur(0); }
+    to { transform: scale(1.28); opacity: 0; filter: blur(10px) brightness(1.35); }
+}
+
+@keyframes scene-arrive {
+    from { transform: scale(1.1); opacity: 0; filter: blur(8px); }
+    to { transform: scale(1); opacity: 1; filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-scene--arriving,
+    .nav-scene--leaving { animation-duration: 1ms; }
+}
+
+.nav-banner {
+    position: fixed;
+    top: 58px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 70;
+    max-width: min(680px, 92vw);
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-size: 0.86rem;
+    color: #ffd9d9;
+    background: rgba(60, 12, 20, 0.72);
+    border: 1px solid rgba(255, 120, 120, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.nav-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(4, 6, 14, 0.55) 100%),
+        linear-gradient(180deg, rgba(4, 6, 14, 0.45), transparent 18%);
+}
+
+/* ---------- doorway hotspots ---------- */
+.hotspot {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    z-index: 40;
+    color: var(--sw-ink);
+}
+
+.hotspot__ring {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    font-size: 1.05rem;
+    color: color-mix(in srgb, var(--accent, #67e8f9) 90%, #fff);
+    background: rgba(8, 12, 26, 0.38);
+    border: 1.5px solid color-mix(in srgb, var(--accent, #67e8f9) 65%, transparent);
+    box-shadow:
+        0 0 22px color-mix(in srgb, var(--accent, #67e8f9) 35%, transparent),
+        inset 0 0 14px color-mix(in srgb, var(--accent, #67e8f9) 18%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: transform 220ms, box-shadow 220ms;
+    animation: hotspot-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes hotspot-breathe {
+    0%, 100% { box-shadow: 0 0 16px color-mix(in srgb, var(--accent, #67e8f9) 28%, transparent), inset 0 0 12px color-mix(in srgb, var(--accent, #67e8f9) 14%, transparent); }
+    50% { box-shadow: 0 0 30px color-mix(in srgb, var(--accent, #67e8f9) 50%, transparent), inset 0 0 18px color-mix(in srgb, var(--accent, #67e8f9) 24%, transparent); }
+}
+
+.hotspot:hover .hotspot__ring {
+    transform: scale(1.16);
+}
+
+.hotspot__label {
+    font-family: var(--sw-font-display);
+    font-size: 0.92rem;
+    letter-spacing: 0.1em;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: rgba(8, 12, 26, 0.55);
+    border: 1px solid color-mix(in srgb, var(--accent, #67e8f9) 35%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hotspot--back .hotspot__ring {
+    width: 40px;
+    height: 40px;
+    font-size: 0.9rem;
+    animation: none;
+    opacity: 0.85;
+}
+
+/* ---------- topbar ---------- */
+.nav-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px clamp(18px, 3vw, 40px);
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--sw-font-display);
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    color: var(--sw-ink);
+    text-shadow: 0 2px 14px rgba(4, 6, 14, 0.8);
+}
+
+.nav-brand__mark {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #9be8ff, #67e8f9 55%, #a78bfa);
+    box-shadow: 0 0 12px rgba(103, 232, 249, 0.7);
+}
+
+.nav-location {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--accent, #67e8f9) 80%, #fff);
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: rgba(8, 12, 26, 0.45);
+    border: 1px solid color-mix(in srgb, var(--accent, #67e8f9) 30%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.nav-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-actions button {
+    background: rgba(13, 20, 38, 0.55);
+    border: 1px solid rgba(103, 232, 249, 0.25);
+    color: var(--sw-ink);
+    border-radius: 999px;
+    padding: 7px 16px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.nav-actions button:hover {
+    border-color: var(--accent, #67e8f9);
+    color: var(--accent, #67e8f9);
+}
+
+/* ---------- connect cinematic (the doors open) ---------- */
+.nav-cinematic {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: #000;
+    cursor: pointer;
+}
+
+/* The overlay stays invisible until the clip actually paints (--in) and fades
+   out at the end (--out). A missing/404 clip never paints, so it never flashes
+   — the room simply cross-dissolves underneath. */
+.nav-cinematic {
+    opacity: 0;
+    transition: opacity 360ms ease;
+}
+
+.nav-cinematic--in {
+    opacity: 1;
+}
+
+.nav-cinematic--out {
+    opacity: 0;
+}
+
+.nav-cinematic video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.nav-cinematic__skip {
+    position: absolute;
+    bottom: 22px;
+    right: 28px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(234, 246, 255, 0.75);
+}
+
+/* ---------- vault hub list ---------- */
+.vault-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 42vh;
+    overflow-y: auto;
+}
+
+.vault-list__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(148, 190, 255, 0.12);
+    cursor: pointer;
+    transition: border-color 180ms, background 180ms;
+}
+
+.vault-list__row:hover {
+    border-color: color-mix(in srgb, var(--accent, #38bdf8) 55%, transparent);
+    background: rgba(255, 255, 255, 0.055);
+}
+
+.vault-list__dot {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px currentColor;
+}
+
+.vault-list__ns {
+    font-family: var(--sw-font-display);
+    font-size: 0.98rem;
+    color: var(--sw-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vault-list__meta {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--sw-ink-soft);
+    white-space: nowrap;
+}
+
+/* ---------- shelf shards inside a namespace room ---------- */
+.nav-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+}
+
+.shelf-shard {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: clamp(40px, 4.4vw, 72px);
+    aspect-ratio: 1;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    animation: shard-settle 700ms ease-out both;
+}
+
+/* The crystal art was keyed to transparency (glow on black → alpha), so it
+   composites normally. Sealed = dim; revealed = full glow with a bloom. */
+.shelf-shard__crystal {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.62;
+    filter: saturate(0.85) brightness(0.95);
+    transition: opacity 320ms ease, filter 320ms ease;
+}
+
+@keyframes shard-settle {
+    from { opacity: 0; transform: translate(-50%, -66%) scale(0.8); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.shelf-shard--lit .shelf-shard__crystal {
+    opacity: 1;
+    filter: saturate(1.1) brightness(1.15)
+        drop-shadow(0 0 7px color-mix(in srgb, var(--accent, #a78bfa) 65%, transparent));
+    animation: crystal-ignite 900ms ease-out;
+}
+
+@keyframes crystal-ignite {
+    0% { opacity: 0.62; filter: saturate(0.85) brightness(0.95); }
+    55% { opacity: 1; filter: saturate(1.3) brightness(1.5) drop-shadow(0 0 14px #fff); }
+    100% { opacity: 1; filter: saturate(1.1) brightness(1.15); }
+}
+
+.shelf-shard:hover {
+    transform: translate(-50%, -54%) scale(1.34);
+    z-index: 5;
+}
+
+.shelf-shard:hover .shelf-shard__crystal {
+    opacity: 1;
+    filter: saturate(1.1) brightness(1.2);
+}
+
+.shelf-shard--selected {
+    transform: translate(-50%, -55%) scale(1.42);
+    z-index: 6;
+}
+
+.shelf-shard--selected .shelf-shard__crystal {
+    opacity: 1;
+    filter: saturate(1.15) brightness(1.3);
+}
+
+/* ---------- shard detail card ---------- */
+.shard-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.shard-detail__back {
+    align-self: flex-start;
+    background: none;
+    border: 0;
+    color: var(--sw-ink-soft);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0;
+}
+
+.shard-detail__back:hover {
+    color: var(--sw-ink);
+}
+
+.shard-detail__text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--sw-ink);
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.shard-detail__text--sealed {
+    color: color-mix(in srgb, #a78bfa 55%, var(--sw-ink-soft));
+    font-style: italic;
+}
+
+/* ---------- full-screen modal for editing settings over the palace ---------- */
+.palace-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    display: grid;
+    place-items: center;
+    background: rgba(4, 6, 14, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.palace-modal > .settings-form {
+    width: min(560px, 92vw);
+    max-height: 86vh;
+    overflow-y: auto;
+}

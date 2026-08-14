@@ -1,0 +1,8 @@
+# Raw generation artifacts — regenerate with the scripts here.
+*.png
+*.jpeg
+*.jpg
+*.mp4
+*.json
+*.err
+*.log
