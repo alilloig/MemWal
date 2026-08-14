@@ -421,6 +421,22 @@ body {
     cursor: pointer;
 }
 
+/* The overlay stays invisible until the clip actually paints (--in) and fades
+   out at the end (--out). A missing/404 clip never paints, so it never flashes
+   — the room simply cross-dissolves underneath. */
+.nav-cinematic {
+    opacity: 0;
+    transition: opacity 360ms ease;
+}
+
+.nav-cinematic--in {
+    opacity: 1;
+}
+
+.nav-cinematic--out {
+    opacity: 0;
+}
+
 .nav-cinematic video {
     width: 100%;
     height: 100%;

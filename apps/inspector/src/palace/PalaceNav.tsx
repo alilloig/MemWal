@@ -37,8 +37,19 @@ export function PalaceNav({
 }: Props) {
     const [shown, setShown] = useState(scene); // scene currently painted
     const [leaving, setLeaving] = useState(false);
+    const [cineOut, setCineOut] = useState(false); // fading the clip out onto the still
     const originRef = useRef<{ x: number; y: number }>({ x: 50, y: 50 });
     const pendingRef = useRef<SceneDef | null>(null);
+
+    // Cross-fade the clip's final frame onto the room still (seedance lands
+    // near the --end-image but not pixel-exact), then unmount it.
+    const finishCinematic = useCallback(() => {
+        setCineOut(true);
+        setTimeout(() => {
+            setCineOut(false);
+            onCinematicEnd?.();
+        }, 360);
+    }, [onCinematicEnd]);
 
     // Scene change: zoom toward the clicked hotspot, then swap and settle.
     useEffect(() => {
@@ -66,12 +77,18 @@ export function PalaceNav({
     );
 
     const videoRef = useRef<HTMLVideoElement>(null);
+    const [cineIn, setCineIn] = useState(false); // overlay revealed once the clip paints
     useEffect(() => {
+        setCineIn(false);
         const v = videoRef.current;
         if (!v || !cinematic) return;
         v.playbackRate = 1.9;
-        v.play().catch(() => onCinematicEnd?.());
-    }, [cinematic, onCinematicEnd]);
+        v.play().catch(() => finishCinematic());
+        // Safety: if a clip is missing or stalls, reveal the room anyway so
+        // navigation never gets stuck on a black overlay.
+        const bail = setTimeout(() => finishCinematic(), 6000);
+        return () => clearTimeout(bail);
+    }, [cinematic, finishCinematic]);
 
     return (
         <div className="nav-root" data-scene={shown.id} style={{ "--accent": shown.accent } as React.CSSProperties}>
@@ -123,13 +140,19 @@ export function PalaceNav({
             )}
 
             {cinematic && (
-                <div className="nav-cinematic" onClick={() => onCinematicEnd?.()}>
+                <div
+                    className={`nav-cinematic ${cineIn ? "nav-cinematic--in" : ""} ${cineOut ? "nav-cinematic--out" : ""}`}
+                    onClick={() => finishCinematic()}
+                >
                     <video
                         ref={videoRef}
                         src={cinematic}
                         muted
                         playsInline
-                        onEnded={() => onCinematicEnd?.()}
+                        preload="auto"
+                        onPlaying={() => setCineIn(true)}
+                        onEnded={() => finishCinematic()}
+                        onError={() => finishCinematic()}
                     />
                     <span className="nav-cinematic__skip">click to skip</span>
                 </div>

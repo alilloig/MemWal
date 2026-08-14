@@ -41,11 +41,16 @@ localhost calls). See `.env.example` for the optional overrides.
   saved in `~/.memwal/credentials.json`. Everything stays in your browser's
   localStorage.
 - **One-click (needs the dashboard's `/connect/app` route, added in this
-  branch):** press "Connect with Walrus Memory". The app generates a delegate
-  key in your browser and hands the public half to the dashboard, where you
-  sign in (zkLogin or a Sui wallet) and approve — a sponsored transaction
-  registers the key, no gas needed. Until that dashboard change is deployed,
-  point `VITE_MEMWAL_DASHBOARD_URL` at a locally-run `apps/app`.
+  branch — not yet on production `memory.walrus.xyz`):** press "Connect with
+  Walrus Memory". A delegate key is generated in your browser and the dashboard
+  opens **in a new tab** with the public half; you sign in (zkLogin or a Sui
+  wallet) and approve a sponsored `add_delegate_key` (no gas). The dashboard
+  sends the popup back to this origin, which signals the palace tab
+  (same-origin `BroadcastChannel`) and closes — the gates then recognize you
+  and a click plays the entrance. zkLogin, the wallet signature, and the
+  sponsor only exist on the dashboard, which is why a dashboard endpoint is
+  required. To try it before that route is deployed, run `apps/app` locally and
+  set `VITE_MEMWAL_DASHBOARD_URL=http://localhost:5173`.
 
 ## Regenerating the artwork
 

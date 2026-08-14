@@ -3,7 +3,7 @@ import { MemWal, type HealthResult } from "@mysten-incubation/memwal";
 import type { AccountInfo, InspectorSettings, MemoryBlob } from "./types";
 import { DEFAULT_SETTINGS, clearSettings, loadSettings, resolveSettings, saveSettings } from "./config";
 import { createSuiClient, fetchAccount, fetchMemoryBlobs } from "./lib/chain";
-import { consumeDashboardCallback } from "./lib/connect";
+import { consumeDashboardCallback, onConnected } from "./lib/connect";
 import { SettingsForm } from "./components/SettingsForm";
 import { OverviewCards } from "./components/OverviewCards";
 import { SearchPanel } from "./components/SearchPanel";
@@ -19,23 +19,43 @@ import {
     type SceneId,
 } from "./palace/scenes";
 
+type Phase =
+    | { at: "connecting"; settings: null }
+    | { at: "ready"; settings: InspectorSettings } // connected, waiting at the gates
+    | { at: "inside"; settings: InspectorSettings; entrance: boolean }; // walking the palace
+
 export function App() {
-    // Returning from the dashboard connect flow? The URL fragment carries the
-    // account info; the delegate key waited in sessionStorage. That round-trip
-    // counts as "just connected" — the palace plays the doors-open cinematic.
-    const [{ settings, justConnected }, setState] = useState(() => {
+    // Same-tab fallback: if the popup was blocked and we navigated in place,
+    // this tab carries the callback fragment — consume it and land at the gates
+    // "ready" to enter (a click plays the doors-open cinematic).
+    const [phase, setPhase] = useState<Phase>(() => {
         const connected = consumeDashboardCallback();
         if (connected) {
             saveSettings(connected);
-            return { settings: connected as InspectorSettings | null, justConnected: true };
+            return { at: "ready", settings: connected };
         }
-        return { settings: loadSettings(), justConnected: false };
+        const saved = loadSettings();
+        // A returning visitor with saved settings walks straight in — no cinematic.
+        return saved
+            ? { at: "inside", settings: saved, entrance: false }
+            : { at: "connecting", settings: null };
     });
-    const setSettings = (s: InspectorSettings | null, connected = false) =>
-        setState({ settings: s, justConnected: connected });
     const [editing, setEditing] = useState(false);
 
-    if (!settings) {
+    // The popup signals the palace tab here when the key is registered.
+    useEffect(() => {
+        return onConnected((s) => {
+            saveSettings(s);
+            setPhase({ at: "ready", settings: s });
+        });
+    }, []);
+
+    const disconnect = () => {
+        clearSettings();
+        setPhase({ at: "connecting", settings: null });
+    };
+
+    if (phase.at === "connecting") {
         return (
             <PalaceNav
                 scene={STATIC_SCENES.gates}
@@ -45,8 +65,24 @@ export function App() {
                         initial={DEFAULT_SETTINGS}
                         onSave={(s) => {
                             saveSettings(s);
-                            setSettings(s, true);
+                            setPhase({ at: "ready", settings: s });
                         }}
+                    />
+                }
+            />
+        );
+    }
+
+    if (phase.at === "ready") {
+        return (
+            <PalaceNav
+                scene={STATIC_SCENES.gates}
+                onNavigate={() => {}}
+                console={
+                    <GateWelcome
+                        settings={phase.settings}
+                        onEnter={() => setPhase({ at: "inside", settings: phase.settings, entrance: true })}
+                        onDisconnect={disconnect}
                     />
                 }
             />
@@ -57,22 +93,19 @@ export function App() {
         <>
             <Palace
                 // Remount when the account changes so no stale state leaks across accounts.
-                key={`${settings.accountId}-${settings.network}`}
-                settings={settings}
-                enterThroughGates={justConnected}
+                key={`${phase.settings.accountId}-${phase.settings.network}`}
+                settings={phase.settings}
+                playEntrance={phase.entrance}
                 onEdit={() => setEditing(true)}
-                onDisconnect={() => {
-                    clearSettings();
-                    setSettings(null);
-                }}
+                onDisconnect={disconnect}
             />
             {editing && (
                 <div className="palace-modal" onClick={(e) => e.target === e.currentTarget && setEditing(false)}>
                     <SettingsForm
-                        initial={settings}
+                        initial={phase.settings}
                         onSave={(s) => {
                             saveSettings(s);
-                            setSettings(s);
+                            setPhase({ at: "inside", settings: s, entrance: false });
                             setEditing(false);
                         }}
                         onCancel={() => setEditing(false)}
@@ -83,14 +116,62 @@ export function App() {
     );
 }
 
+/** The gates recognize a connected visitor; a click opens them. */
+function GateWelcome({
+    settings,
+    onEnter,
+    onDisconnect,
+}: {
+    settings: InspectorSettings;
+    onEnter: () => void;
+    onDisconnect: () => void;
+}) {
+    return (
+        <section>
+            <div className="section-head">
+                <h2>The gates recognize you</h2>
+            </div>
+            <p className="hint">
+                Connected to <code>{settings.accountId.slice(0, 10)}…{settings.accountId.slice(-6)}</code>{" "}
+                on {settings.network}. Step inside — every room is a live view over this account.
+            </p>
+            <div className="form-actions">
+                <button className="primary" onClick={onEnter}>
+                    Enter the palace →
+                </button>
+                <button onClick={onDisconnect}>Disconnect</button>
+            </div>
+        </section>
+    );
+}
+
+/**
+ * Per-room fly-in clip, played on arrival; rooms without one fall back to the
+ * CSS zoom-dissolve. (The observatory still — a scrying orb — trips both video
+ * models' content filters, so that room dissolves instead of flying in.)
+ */
+function arrivalClip(id: SceneId): string | null {
+    switch (id) {
+        case "atrium": return "/palace/atrium.mp4";
+        case "vault": return "/palace/vault.mp4";
+        case "scriptorium": return "/palace/scriptorium.mp4";
+        case "gates":
+        case "observatory":
+            return null;
+        default:
+            // namespace room — the clip matching its library variant
+            return `/palace/lib_${variantFor(id.slice(3)).key}.mp4`;
+    }
+}
+
 function Palace({
     settings,
-    enterThroughGates,
+    playEntrance,
     onEdit,
     onDisconnect,
 }: {
     settings: InspectorSettings;
-    enterThroughGates: boolean;
+    playEntrance: boolean;
     onEdit: () => void;
     onDisconnect: () => void;
 }) {
@@ -112,18 +193,20 @@ function Palace({
     );
 
     // ---- palace position ----
-    const [sceneId, setSceneId] = useState<SceneId>(enterThroughGates ? "gates" : "atrium");
+    // Entering through the gates lands at the atrium with the doors-open flight
+    // playing over it; a returning visitor is dropped straight into the atrium.
+    const [sceneId, setSceneId] = useState<SceneId>("atrium");
     const [cinematic, setCinematic] = useState<string | null>(
-        enterThroughGates ? "/palace/gates.mp4" : null,
+        playEntrance ? "/palace/gates.mp4" : null,
     );
-    const endCinematic = useCallback(() => {
-        setCinematic(null);
-        setSceneId("atrium");
-    }, []);
+    const endCinematic = useCallback(() => setCinematic(null), []);
     const [selectedShard, setSelectedShard] = useState<string | null>(null);
     const navigate = useCallback((to: SceneId) => {
         setSelectedShard(null);
         setSceneId(to);
+        // Play the target room's fly-in clip over the (already-swapped) scene;
+        // the clip settles on the room still, so the hand-off is seamless.
+        setCinematic(arrivalClip(to));
     }, []);
 
     // ---- account data ----

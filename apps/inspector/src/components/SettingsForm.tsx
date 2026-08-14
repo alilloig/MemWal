@@ -30,17 +30,24 @@ export function SettingsForm({ initial, onSave, onCancel }: Props) {
     async function connect() {
         setConnecting(true);
         setConnectError(null);
+        // Open the popup SYNCHRONOUSLY in the click handler — a popup opened
+        // later (after the async keygen) is blocked. beginDashboardConnect
+        // then points it at the dashboard once the key is ready.
+        const popup = window.open("about:blank", "walrus-memory-connect", "width=480,height=720");
         try {
-            // Generates the delegate key in this browser, then navigates to the
-            // dashboard, where the user signs in (Google zkLogin or Sui wallet)
-            // and clicks Approve. The dashboard sends them back here connected.
+            // Generates the delegate key in this browser, then sends the popup
+            // to the dashboard, where the user signs in (Google zkLogin or Sui
+            // wallet) and approves. The palace stays open and is signalled when
+            // the popup returns connected.
             await beginDashboardConnect({
                 dashboardUrl: form.dashboardUrl.trim().replace(/\/+$/, ""),
                 serverUrl: form.serverUrl.trim().replace(/\/+$/, ""),
                 namespace: form.namespace.trim() || "default",
+                popup,
             });
-            // Navigation is under way — keep the button in its busy state.
+            // Popup is under way — keep the button busy until it signals back.
         } catch (e) {
+            popup?.close();
             setConnectError(e instanceof Error ? e.message : String(e));
             setConnecting(false);
         }
@@ -50,14 +57,16 @@ export function SettingsForm({ initial, onSave, onCancel }: Props) {
         <div className="settings-form card">
             <h2>Connect to a Walrus Memory account</h2>
             <p className="hint">
-                Sign in on the Walrus Memory dashboard — with Google or a Sui wallet —
-                and approve this inspector. No keys to copy: an access key is created in
-                this browser and registered to your account with one click.
+                Opens the Walrus Memory dashboard in a new tab — sign in with Google or a
+                Sui wallet and approve. An access key is created in this browser and
+                registered to your account there; the palace stays open and lights up when
+                you return. (Needs a dashboard that hosts the <code>/connect/app</code>
+                route; if it doesn't yet, use manual setup below.)
             </p>
 
             <div className="form-actions">
                 <button type="button" className="primary" onClick={connect} disabled={connecting}>
-                    {connecting ? "Opening the Walrus Memory dashboard…" : "Connect with Walrus Memory"}
+                    {connecting ? "Waiting for the dashboard…" : "Connect with Walrus Memory"}
                 </button>
                 {onCancel && (
                     <button type="button" onClick={onCancel}>
