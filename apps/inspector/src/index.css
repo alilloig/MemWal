@@ -29,45 +29,6 @@ body {
     line-height: 1.5;
 }
 
-.shell {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px 20px 80px;
-}
-
-/* ---------- header ---------- */
-
-header {
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-    flex-wrap: wrap;
-    padding-bottom: 18px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 26px;
-}
-
-header h1 {
-    font-size: 20px;
-    margin: 0;
-    letter-spacing: 0.2px;
-}
-
-.logo {
-    color: var(--accent);
-}
-
-.tagline {
-    color: var(--muted);
-    font-size: 13px;
-}
-
-.header-actions {
-    margin-left: auto;
-    display: flex;
-    gap: 8px;
-}
-
 /* ---------- sections ---------- */
 
 section {
@@ -161,54 +122,6 @@ section {
 }
 
 /* ---------- table ---------- */
-
-.table-wrap {
-    overflow-x: auto;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13.5px;
-}
-
-th,
-td {
-    text-align: left;
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-}
-
-th {
-    background: var(--panel-2);
-    color: var(--muted);
-    font-weight: 500;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-}
-
-tbody tr:last-child td {
-    border-bottom: none;
-}
-
-tbody tr:hover {
-    background: rgba(111, 227, 194, 0.04);
-}
-
-.text-cell {
-    white-space: normal;
-    min-width: 260px;
-    max-width: 420px;
-}
-
-.encrypted {
-    color: var(--muted);
-    font-style: italic;
-}
 
 /* ---------- chips ---------- */
 

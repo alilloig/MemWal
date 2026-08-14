@@ -1,12 +1,8 @@
 /* ============================================================
-   Crystal Memory Palace — theme + live console layer
-   The scroll-world engine injects its own CSS (@layer sw); these
-   tokens override its theme, and .palace-console styles the live
-   inspector panels that float over the flight.
+   Walrus Memory Palace — theme, console layer, click navigation
    ============================================================ */
 
-:root,
-.sw-root {
+:root {
     --sw-bg: #070912;
     --sw-ink: #eaf6ff;
     --sw-ink-soft: #8fa3bf;
@@ -17,115 +13,13 @@
     --sw-font-body: "Schibsted Grotesk", -apple-system, "Segoe UI", sans-serif;
 }
 
-body,
-.palace-console,
-.palace-topright button {
+body {
+    background: var(--sw-bg);
     font-family: var(--sw-font-body);
 }
 
-.sw-root .sw-copy__title {
-    font-weight: 400;
-    letter-spacing: 0.01em;
-}
-
-.palace-console .section-head h2,
-.shard-group__ns {
+.palace-console .section-head h2 {
     font-family: var(--sw-font-display);
-}
-
-/* Let the palace own the page scroll; kill the old app shell constraints. */
-body {
-    background: var(--sw-bg);
-}
-
-.palace-host {
-    position: relative;
-}
-
-/* The engine pins its 5 viewport-sized scene layers with will-change, which
-   forces 5 permanent GPU layers. On some GPU/driver combos (observed on this
-   macOS + Chrome-for-Testing) that breaks surface capture — screenshots and
-   some captures render black. Chrome promotes animating layers on demand
-   anyway, so dropping the hint costs little and fixes capture. */
-.sw-root .sw-scene,
-.sw-root .sw-scene__still,
-.sw-root .sw-copy,
-.sw-root .sw-particles {
-    will-change: auto !important;
-}
-
-/* The top nav + scroll already navigate rooms; the right-edge route rail sits
-   exactly where the live console floats, so retire it. */
-.sw-root .sw-route {
-    display: none;
-}
-
-/* Keep the engine's room nav clear of the fixed Settings/Disconnect buttons. */
-.sw-root .sw-topbar {
-    padding-right: 230px;
-}
-
-/* The engine's nav pill defaults to a light glass (white 55%) that reads
-   foreign on the palace's night theme — recast it as dark crystal. */
-.sw-root .sw-nav {
-    background: rgba(10, 16, 34, 0.55);
-    border-color: color-mix(in srgb, var(--sw-accent) 30%, transparent);
-}
-
-.sw-root .sw-nav__item.is-active {
-    color: #05070f;
-}
-
-/* Dark scrollbar — the default white track cuts a bright stripe down the
-   right edge of the night scene. */
-html {
-    scrollbar-color: color-mix(in srgb, var(--sw-accent, #67e8f9) 35%, #1a2233) #070912;
-}
-
-::-webkit-scrollbar {
-    width: 10px;
-    background: #070912;
-}
-
-::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--sw-accent, #67e8f9) 25%, #1a2233);
-    border-radius: 5px;
-}
-
-/* Engine tag pills assume a light theme (color-mix with #fff/#000) — flip them. */
-.sw-root .sw-copy__tags li {
-    color: color-mix(in srgb, var(--sw-accent) 80%, #fff);
-    background: color-mix(in srgb, var(--sw-accent) 16%, transparent);
-    border-color: color-mix(in srgb, var(--sw-accent) 45%, transparent);
-    font-family: var(--mono);
-    font-weight: 500;
-}
-
-/* ---------- fixed chrome (top-right actions) ---------- */
-.palace-topright {
-    position: fixed;
-    top: 14px;
-    right: 18px;
-    z-index: 300;
-    display: flex;
-    gap: 8px;
-}
-
-.palace-topright button {
-    background: rgba(13, 20, 38, 0.55);
-    border: 1px solid rgba(103, 232, 249, 0.25);
-    color: var(--sw-ink);
-    border-radius: 999px;
-    padding: 7px 16px;
-    font-size: 0.82rem;
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-}
-
-.palace-topright button:hover {
-    border-color: var(--sw-accent, #67e8f9);
-    color: var(--sw-accent, #67e8f9);
 }
 
 /* ---------- the live console (right side, per-room) ---------- */
@@ -236,12 +130,6 @@ html {
     box-shadow: 0 4px 24px color-mix(in srgb, var(--sw-accent, #67e8f9) 35%, transparent);
 }
 
-.palace-console .table-wrap {
-    max-height: 44vh;
-    overflow: auto;
-    border-radius: 10px;
-}
-
 .palace-console .settings-form {
     max-width: none;
     margin: 0;
@@ -254,12 +142,11 @@ html {
     font-size: 1.05rem;
 }
 
-/* room-flavoured console glow */
-.palace-console[data-room="gates"] .palace-console__inner { --sw-accent: #67e8f9; }
-.palace-console[data-room="atrium"] .palace-console__inner { --sw-accent: #a78bfa; }
-.palace-console[data-room="vault"] .palace-console__inner { --sw-accent: #38bdf8; }
-.palace-console[data-room="observatory"] .palace-console__inner { --sw-accent: #f0abfc; }
-.palace-console[data-room="scriptorium"] .palace-console__inner { --sw-accent: #fbbf24; }
+/* Room-flavoured console glow: the navigator sets --accent per scene
+   (namespace rooms included), so the console just inherits it. */
+.palace-console .palace-console__inner {
+    --sw-accent: var(--accent, #67e8f9);
+}
 
 /* ---------- narrow screens: console becomes a bottom sheet ---------- */
 @media (max-width: 980px) {
@@ -287,113 +174,7 @@ html {
     }
 }
 
-/* ---------- the Vault's shard grid ---------- */
-.shard-groups {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    max-height: 46vh;
-    overflow-y: auto;
-    padding-right: 4px;
-    scrollbar-width: thin;
-}
-
-.shard-group__head {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin: 2px 0 8px;
-    border-bottom: 1px solid color-mix(in srgb, var(--sw-accent, #38bdf8) 22%, transparent);
-    padding-bottom: 5px;
-}
-
-.shard-group__ns {
-    font-size: 1.02rem;
-    letter-spacing: 0.08em;
-    color: color-mix(in srgb, var(--sw-accent, #38bdf8) 85%, #fff);
-}
-
-.shard-group__count {
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    color: var(--sw-ink-soft);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.shard-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-}
-
-.shard {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    text-align: left;
-    width: 100%;
-    padding: 11px 13px;
-    border-radius: 12px;
-    cursor: pointer;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(148, 190, 255, 0.12);
-    transition: border-color 200ms, background 200ms, box-shadow 300ms;
-}
-
-.shard:hover {
-    border-color: color-mix(in srgb, var(--sw-accent, #38bdf8) 55%, transparent);
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.shard--lit {
-    border-color: color-mix(in srgb, var(--sw-accent, #38bdf8) 35%, transparent);
-    box-shadow: 0 0 22px color-mix(in srgb, var(--sw-accent, #38bdf8) 12%, transparent) inset;
-}
-
-.shard--sealed .shard__text {
-    color: color-mix(in srgb, #a78bfa 55%, var(--sw-ink-soft));
-    font-style: italic;
-}
-
-.shard__glyph {
-    flex: none;
-    margin-top: 1px;
-    filter: drop-shadow(0 0 6px rgba(103, 232, 249, 0.25));
-}
-
-.shard--lit .shard__glyph {
-    animation: shard-ignite 900ms ease-out both;
-    filter: drop-shadow(0 0 10px rgba(103, 232, 249, 0.6));
-}
-
-@keyframes shard-ignite {
-    0% { filter: drop-shadow(0 0 0 rgba(103, 232, 249, 0)); transform: scale(0.92); }
-    55% { filter: drop-shadow(0 0 16px rgba(155, 243, 255, 0.9)); transform: scale(1.06); }
-    100% { transform: scale(1); }
-}
-
-.shard__body {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-}
-
-.shard__text {
-    font-size: 0.9rem;
-    line-height: 1.45;
-    color: var(--sw-ink);
-    overflow-wrap: anywhere;
-}
-
-.shard__text--clamp {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
+/* ---------- shard metadata rows (shared by the detail card) ---------- */
 .shard__meta {
     display: flex;
     flex-wrap: wrap;

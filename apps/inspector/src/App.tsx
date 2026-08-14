@@ -20,22 +20,19 @@ import {
 } from "./palace/scenes";
 
 export function App() {
-    const [justConnected, setJustConnected] = useState(false);
-    const [settings, setSettings] = useState<InspectorSettings | null>(() => {
-        // Returning from the dashboard connect flow? The URL fragment carries
-        // the account info; the delegate key waited in sessionStorage.
+    // Returning from the dashboard connect flow? The URL fragment carries the
+    // account info; the delegate key waited in sessionStorage. That round-trip
+    // counts as "just connected" — the palace plays the doors-open cinematic.
+    const [{ settings, justConnected }, setState] = useState(() => {
         const connected = consumeDashboardCallback();
         if (connected) {
             saveSettings(connected);
-            return connected;
+            return { settings: connected as InspectorSettings | null, justConnected: true };
         }
-        return loadSettings();
+        return { settings: loadSettings(), justConnected: false };
     });
-    // The dashboard round-trip counts as "just connected" — play the doors.
-    useEffect(() => {
-        if (settings && consumeDashboardCallback()) setJustConnected(true);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const setSettings = (s: InspectorSettings | null, connected = false) =>
+        setState({ settings: s, justConnected: connected });
     const [editing, setEditing] = useState(false);
 
     if (!settings) {
@@ -48,8 +45,7 @@ export function App() {
                         initial={DEFAULT_SETTINGS}
                         onSave={(s) => {
                             saveSettings(s);
-                            setSettings(s);
-                            setJustConnected(true);
+                            setSettings(s, true);
                         }}
                     />
                 }
@@ -68,7 +64,6 @@ export function App() {
                 onDisconnect={() => {
                     clearSettings();
                     setSettings(null);
-                    setJustConnected(false);
                 }}
             />
             {editing && (
@@ -146,12 +141,7 @@ function Palace({
         try {
             const acct = await fetchAccount(suiClient, resolved.accountId);
             setAccount(acct);
-            const found = await fetchMemoryBlobs(
-                suiClient,
-                acct.owner,
-                resolved.walrusPackageId,
-                () => {},
-            );
+            const found = await fetchMemoryBlobs(suiClient, acct.owner, resolved.walrusPackageId);
             // Keep any plaintext already revealed for blobs that still exist.
             setBlobs((prev) => {
                 const textByBlobId = new Map(

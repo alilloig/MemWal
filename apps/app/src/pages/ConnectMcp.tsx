@@ -145,6 +145,8 @@ export default function ConnectMcp() {
      * a web app can't have opened a localhost listener anyway.
      */
     const redirect = params.get('redirect') ?? ''
+    /** Display label for redirect mode (localhost mode gets it from the verified bridge). */
+    const requestedLabel = params.get('label') ?? ''
     const publicKey = params.get('publicKey') ?? ''
     const relayer = params.get('relayer') ?? config.memwalServerUrl
     /**
@@ -210,7 +212,7 @@ export default function ConnectMcp() {
         if (redirect) {
             setVerifiedBridge({
                 publicKey,
-                label: params.get('label') || 'Web app',
+                label: requestedLabel || 'Web app',
                 relayer,
             })
             setStep('consent')
@@ -254,7 +256,7 @@ export default function ConnectMcp() {
         })()
 
         return () => controller.abort()
-    }, [paramsValid, port, redirect, params, preflightAttempt, publicKey, relayer, state])
+    }, [paramsValid, port, redirect, requestedLabel, preflightAttempt, publicKey, relayer, state])
 
     const postCallback = useCallback(
         async (payload: McpCallbackPayload): Promise<boolean> => {
@@ -408,11 +410,11 @@ export default function ConnectMcp() {
                 // mode (plus the display label redirect mode reads from the
                 // query string). Empty values are dropped.
                 ...(port ? { port } : {}),
-                ...(redirect ? { redirect, label: params.get('label') ?? '' } : {}),
+                ...(redirect ? { redirect, label: requestedLabel } : {}),
                 publicKey, delegateAddress, relayer, connectState: state,
             }),
         )
-    }, [paramsValid, port, redirect, params, publicKey, delegateAddress, relayer, state])
+    }, [paramsValid, port, redirect, requestedLabel, publicKey, delegateAddress, relayer, state])
 
     // If the wallet popup completes after we asked it to open, auto-proceed.
     useEffect(() => {
