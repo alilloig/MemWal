@@ -7,21 +7,34 @@
 import { useMemo, useState } from "react";
 import type { MemoryBlob, SuiNetwork } from "../types";
 import { formatBytes, short, suiObjectUrl, walruscanBlobUrl } from "../lib/format";
+import { variantFor } from "../palace/scenes";
 import { Snippet } from "./Snippet";
 
-/** Shelf-wall anchor bands shared by all library variants (in viewport %). */
-const SHELF = { left: 30, right: 70, rows: [36, 48.5, 60.5] as const, perRow: 6 };
+/**
+ * Where the crystals sit on the back-wall niche grid (viewport %). The rows
+ * line up with the three bands of diamond niches in the library room stills;
+ * the crystals rest just in front so they're large enough to read and click.
+ */
+const SHELF = { left: 30, right: 70, rows: [33, 43.5, 53.5] as const, perRow: 6 };
 const MAX_ON_SHELF = SHELF.rows.length * SHELF.perRow;
 
+// Small deterministic per-slot jitter so the crystals feel placed, not tiled.
+function jitter(i: number, spread: number) {
+    return (((i * 2654435761) % 1000) / 1000 - 0.5) * 2 * spread;
+}
+
 export function ShelfShards({
+    namespace,
     blobs,
     selectedId,
     onSelect,
 }: {
+    namespace: string;
     blobs: MemoryBlob[];
     selectedId: string | null;
     onSelect: (objectId: string) => void;
 }) {
+    const crystal = `/palace/shard_${variantFor(namespace).key}.webp`;
     const placed = blobs.slice(0, MAX_ON_SHELF);
     const step = (SHELF.right - SHELF.left) / (SHELF.perRow - 1);
     return (
@@ -30,15 +43,25 @@ export function ShelfShards({
                 const row = Math.floor(i / SHELF.perRow);
                 const col = i % SHELF.perRow;
                 const revealed = b.text !== undefined;
+                const x = SHELF.left + col * step + jitter(i, 0.7);
+                const y = SHELF.rows[row] + jitter(i * 3, 0.6);
+                const rot = jitter(i * 7, 7);
+                const scale = 0.9 + Math.abs(jitter(i * 5, 0.14));
                 return (
                     <button
                         key={b.objectId}
                         className={`shelf-shard ${revealed ? "shelf-shard--lit" : ""} ${selectedId === b.objectId ? "shelf-shard--selected" : ""}`}
-                        style={{ left: `${SHELF.left + col * step}%`, top: `${SHELF.rows[row]}%` }}
+                        style={{ left: `${x}%`, top: `${y}%` }}
                         onClick={() => onSelect(b.objectId)}
                         title={revealed ? b.text : "sealed memory"}
                     >
-                        <ShardGlyph lit={revealed} />
+                        <span
+                            className="shelf-shard__crystal"
+                            style={{
+                                backgroundImage: `url(${crystal})`,
+                                transform: `rotate(${rot}deg) scale(${scale.toFixed(3)})`,
+                            }}
+                        />
                     </button>
                 );
             })}
@@ -152,30 +175,5 @@ function ShardDetail({
                 </a>
             </div>
         </div>
-    );
-}
-
-/** A faceted crystal; `lit` fills it from within. */
-export function ShardGlyph({ lit }: { lit: boolean }) {
-    return (
-        <svg viewBox="0 0 24 34" width="26" height="37" fill="none">
-            <defs>
-                <linearGradient id="shard-lit-g" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0" stopColor="#9BF3FF" />
-                    <stop offset="1" stopColor="#67E8F9" stopOpacity="0.55" />
-                </linearGradient>
-            </defs>
-            <path
-                d="M12 1 L21 10 L17 30 L12 33 L7 30 L3 10 Z"
-                fill={lit ? "url(#shard-lit-g)" : "rgba(167,139,250,0.16)"}
-                stroke={lit ? "#B8F6FF" : "rgba(200,180,255,0.7)"}
-                strokeWidth="1.2"
-            />
-            <path
-                d="M12 1 L12 33 M3 10 L12 14 L21 10"
-                stroke={lit ? "rgba(255,255,255,0.65)" : "rgba(200,180,255,0.35)"}
-                strokeWidth="0.7"
-            />
-        </svg>
     );
 }

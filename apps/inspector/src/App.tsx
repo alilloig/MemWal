@@ -381,7 +381,7 @@ function Palace({
             console={consolePanel}
             overlay={
                 currentNs ? (
-                    <ShelfShards blobs={nsBlobs} selectedId={selectedShard} onSelect={setSelectedShard} />
+                    <ShelfShards namespace={currentNs} blobs={nsBlobs} selectedId={selectedShard} onSelect={setSelectedShard} />
                 ) : null
             }
             topRight={
