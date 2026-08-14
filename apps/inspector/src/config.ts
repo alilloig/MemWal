@@ -18,9 +18,14 @@ export const SUI_GRPC_URLS: Record<SuiNetwork, string> = {
 export const DEFAULT_SETTINGS: InspectorSettings = {
     delegateKey: "",
     accountId: "",
+    // In dev the SDK talks to the page's own origin and the vite proxy
+    // forwards to the relayer (deployed relayers CORS-block localhost).
+    // Production builds talk to the relayer directly.
     serverUrl:
         (import.meta.env.VITE_MEMWAL_SERVER_URL as string) ||
-        "https://relayer.memory.walrus.xyz",
+        (import.meta.env.DEV
+            ? window.location.origin
+            : "https://relayer.memory.walrus.xyz"),
     namespace: "default",
     network: ((import.meta.env.VITE_SUI_NETWORK as string) || "mainnet") as SuiNetwork,
     suiGrpcUrl: "",

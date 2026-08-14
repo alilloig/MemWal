@@ -1,48 +1,25 @@
-# Walrus Memory Inspector — the Memory Palace
+# Walrus Memory Palace
 
-A sample app that shows how to build a **memory inspector** with the
-Walrus Memory SDK (`@mysten-incubation/memwal`) — presented as a scroll-through
-**crystal memory palace**. Scrolling flies the camera through five rooms;
-each room hosts a live console over the same account:
+A sample app for the Walrus Memory SDK (`@mysten-incubation/memwal`), built as
+a first-person crystal palace you click through, graphic-adventure style.
+Every room is a live view over one Walrus Memory account:
 
-| Room | Console | SDK surface |
+| Room | What it shows | SDK / chain surface |
 | --- | --- | --- |
-| The Gates | connection status | `health()` |
-| The Atrium | account overview | chain `MemWalAccount` read |
-| The Vault | memory inventory by metadata | `listOwnedObjects` + `memwal_*` fields, `recall()` join |
+| The Gates | connect (one-click or manual) | delegate key registration |
+| The Atrium | account overview | `health()` + `MemWalAccount` chain read |
+| The Vault | a rotunda — one glowing door per namespace | `listOwnedObjects` + `memwal_*` metadata |
+| Namespace rooms | one crystal shard per memory on the shelves | `recall()` join ("Decrypt room") |
 | The Observatory | semantic search | `recall()` |
 | The Scriptorium | write & maintain | `remember()`, `analyze()`, `restore()` |
 
-The visuals were generated with Higgsfield (scene stills; see
-`gen-src/`) and are driven by the scroll-world scrub engine
-(`src/palace/scrub-engine.js`). The build currently ships the still-image
-flight (crossfade + slow push between rooms); `gen-src/legs.sh` upgrades it to
-a fully seamless video fly-through — video generation needs a Higgsfield plan
-with video access (`seedance_2_0`/`kling3_0` are gated above the free tier).
-After generating, encode per the scroll-world skill Step 6 into
-`public/palace/<room>.mp4` and the engine picks them up automatically.
-
-## What it demonstrates
-
-The SDK has no "list all memories" API on purpose — the relayer only stores
-vectors and blob IDs, plaintext lives SEAL-encrypted on Walrus, and **the Sui
-chain is the source of truth for what exists**. The inspector embraces that
-split:
-
-| Panel | Data source | Calls |
-| --- | --- | --- |
-| Overview | Relayer + chain | `memwal.health()`, `getObject(accountId)` |
-| Memories | Sui chain | `listOwnedObjects` on `walrus::blob::Blob` + `memwal_*` metadata dynamic fields |
-| Reveal text | Relayer | `memwal.recall({ limit: 100, namespace })`, joined onto rows by `blob_id` |
-| Semantic search | Relayer | `memwal.recall({ query, limit, maxDistance, namespace })` |
-| Write & maintain | Relayer | `memwal.remember()` + `waitForRememberJob()`, `memwal.analyze()`, `memwal.restore()` |
-
-Every panel has a collapsible "Show the SDK call" snippet with the exact code
-it runs.
+Each namespace hashes to one of six generated library variants, so every
+namespace room looks different at first sight — a little memory-palace of your
+own. Panels carry a "Show the SDK call" snippet with the exact code they run.
 
 ## Run it
 
-From the repo root (build the SDK first):
+From the repo root:
 
 ```bash
 pnpm install
@@ -50,33 +27,28 @@ pnpm build:sdk
 pnpm --filter @memwal/inspector dev
 ```
 
-Then open http://localhost:5183 and click **Connect with Walrus Memory**:
+Open http://localhost:5183. No env setup needed: in dev the app proxies
+relayer calls through the vite server (deployed relayers CORS-block direct
+localhost calls). See `.env.example` for the optional overrides.
 
-1. The inspector generates an Ed25519 delegate key in your browser.
-2. You land on the Walrus Memory dashboard, sign in with Google (zkLogin) or
-   a Sui wallet, and click **Approve** — a sponsored transaction registers
-   the key on your account (no gas needed).
-3. The dashboard sends you back, connected. The private key never left your
-   browser; the dashboard only saw its public half.
+## Connect with your own account
 
-No keys to copy, no object IDs to hunt down. If you already have credentials
-(the same values `MemWal.create()` takes), "Manual setup & advanced options"
-accepts a delegate key + account ID directly. Either way everything stays in
-your browser's localStorage.
+- **Manual (works today):** open "Manual setup & advanced options" at the
+  Gates and paste a delegate private key + your `MemWalAccount` object ID —
+  the same values `MemWal.create()` takes. Get them from the Walrus Memory
+  dashboard (https://memory.walrus.xyz) or reuse the ones your MCP login
+  saved in `~/.memwal/credentials.json`. Everything stays in your browser's
+  localStorage.
+- **One-click (needs the dashboard's `/connect/app` route, added in this
+  branch):** press "Connect with Walrus Memory". The app generates a delegate
+  key in your browser and hands the public half to the dashboard, where you
+  sign in (zkLogin or a Sui wallet) and approve — a sponsored transaction
+  registers the key, no gas needed. Until that dashboard change is deployed,
+  point `VITE_MEMWAL_DASHBOARD_URL` at a locally-run `apps/app`.
 
-To point the connect flow at a locally running dashboard instead of
-production, set `VITE_MEMWAL_DASHBOARD_URL=http://localhost:5173` in
-`apps/inspector/.env.local` (see `.env.example`).
+## Regenerating the artwork
 
-## Notes
-
-- **Why some rows stay 🔒 encrypted**: "Reveal text" uses a broad `recall()`
-  (top 100 by similarity) because the relayer exposes no get-by-blob-id.
-  Rows the search doesn't surface remain encrypted — that's the privacy
-  model working, not a bug.
-- The on-chain query needs a Sui **gRPC** fullnode endpoint
-  (`https://fullnode.<network>.sui.io` by default) — public JSON-RPC is
-  being sunset.
-- The Walrus package ID (which defines the `Blob` object type) is
-  network-dependent; override it in Settings → Advanced if you run against
-  a custom deployment.
+The rooms are AI-generated (Higgsfield). `gen-src/` holds the reproducible
+pipeline: scene prompts + `gen-scenes.sh` / `gen-rooms.sh` for the stills,
+`legs.sh` + `encode.sh` for the gates cinematic. Raw outputs are gitignored;
+the shipped assets live in `public/palace/`.
