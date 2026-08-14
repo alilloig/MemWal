@@ -1,5 +1,7 @@
 # Walrus Memory Palace
 
+![The palace flight — the gates open, then the camera dives into a namespace room.](docs/demo/palace-flythrough.gif)
+
 A sample app for the Walrus Memory SDK (`@mysten-incubation/memwal`), built as
 a first-person crystal palace you click through, graphic-adventure style.
 Every room is a live view over one Walrus Memory account:
@@ -17,6 +19,10 @@ Each namespace hashes to one of six generated library variants, so every
 namespace room looks different at first sight — a little memory-palace of your
 own. Panels carry a "Show the SDK call" snippet with the call they run, so the
 palace doubles as a code tour.
+
+| The Vault — one door per namespace | A namespace room — one crystal per memory |
+| --- | --- |
+| ![The Vault rotunda: a glowing doorway per namespace, with the on-chain shard counts.](docs/demo/vault-rotunda.jpg) | ![A namespace room: memory crystals seated in the wall niches.](docs/demo/memory-room.jpg) |
 
 ## Run it
 
