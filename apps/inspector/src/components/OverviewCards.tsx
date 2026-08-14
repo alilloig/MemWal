@@ -60,10 +60,15 @@ const blobs = await suiClient.listOwnedObjects({
                                 {health.mode ? ` · ${health.mode}` : ""}
                             </span>
                         </>
-                    ) : (
+                    ) : healthError ? (
                         <>
                             <span className="stat-value err">offline</span>
-                            <span className="stat-label">{healthError ?? "relayer unreachable"}</span>
+                            <span className="stat-label">{healthError}</span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="stat-value">…</span>
+                            <span className="stat-label">checking relayer</span>
                         </>
                     )}
                 </div>

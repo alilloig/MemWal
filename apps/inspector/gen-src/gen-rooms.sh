@@ -17,7 +17,9 @@ gen() {
     echo "room ${name}: exit $?" >> gen-rooms.log ) &
 }
 
-gen rotunda "Subject: the interior of a grand circular rotunda seen from its exact center - a ring of six tall arched doorways evenly spaced around the curved crystal wall, each doorway glowing from within in a different hue (cyan, violet, warm gold, emerald, rose, deep sapphire), a compass rose inlaid in the polished reflective floor, the ceiling a faceted crystal dome. No people."
+# NOTE: ROTUNDA_SLOTS in src/palace/scenes.ts is aligned to SEVEN doors — keep
+# the door count here at seven and re-check the slot positions on any regen.
+gen rotunda "Subject: the interior of a grand circular rotunda seen from its exact center - a ring of seven tall arched doorways evenly spaced around the curved crystal wall, each doorway glowing from within in a different hue (cyan, violet, warm gold, emerald, rose, deep sapphire), a compass rose inlaid in the polished reflective floor, the ceiling a faceted crystal dome. No people."
 gen lib_glacial "${BASE} Variant material: glacial ice-blue crystal, pale frost light, cool white-cyan glow."
 gen lib_amethyst "${BASE} Variant material: violet amethyst crystal, dreamy purple light, soft magenta accents."
 gen lib_amber "${BASE} Variant material: warm amber and gold crystal, honey-colored light, golden dust motes."

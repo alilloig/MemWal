@@ -1,6 +1,10 @@
 #!/bin/zsh
-# Encode the rendered legs for scroll-scrubbing (scroll-world Step 6):
-# native res, crf 20, GOP 8, faststart, no audio, light unsharp.
+# Encode the rendered legs (native res, crf 20, GOP 8, faststart, no audio,
+# light unsharp). Only leg 0 (gates.mp4) ships as the connect cinematic since
+# the click-navigation rewrite; the GOP-8 tuning and the other four outputs are
+# leftovers of the earlier scroll-scrub build. public/palace/ is not gitignored,
+# so re-running this drops four unused clips into the repo — delete them, or
+# encode leg 0 only.
 cd "$(dirname "$0")"
 rooms=(gates atrium vault observatory scriptorium)
 for i in 0 1 2 3 4; do

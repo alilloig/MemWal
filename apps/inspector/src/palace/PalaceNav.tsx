@@ -13,6 +13,8 @@ import "./palace.css";
 interface Props {
     scene: SceneDef;
     onNavigate: (to: SceneDef["id"]) => void;
+    /** A chain/relayer error to surface across every room (banner). */
+    banner?: string | null;
     /** Glass console content for this room (right side). */
     console?: ReactNode;
     /** Extra in-scene overlay (e.g. shelf shards), rendered under hotspots. */
@@ -26,6 +28,7 @@ interface Props {
 export function PalaceNav({
     scene,
     onNavigate,
+    banner,
     console: consolePanel,
     overlay,
     topRight,
@@ -39,7 +42,12 @@ export function PalaceNav({
 
     // Scene change: zoom toward the clicked hotspot, then swap and settle.
     useEffect(() => {
-        if (scene.id === shown.id) return;
+        if (scene.id === shown.id) {
+            // Same room, new content (e.g. the Vault's namespace doorways
+            // arriving from chain) — repaint in place without a transition.
+            if (scene !== shown) setShown(scene);
+            return;
+        }
         pendingRef.current = scene;
         setLeaving(true);
         const t = setTimeout(() => {
@@ -105,6 +113,8 @@ export function PalaceNav({
                 <span className="nav-location">{shown.name}</span>
                 <span className="nav-actions">{topRight}</span>
             </header>
+
+            {banner && <div className="nav-banner" role="alert">{banner}</div>}
 
             {consolePanel && (
                 <aside className="palace-console palace-console--enter" data-room={shown.id} key={shown.id}>

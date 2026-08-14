@@ -121,7 +121,23 @@ section {
     grid-column: span 2;
 }
 
-/* ---------- table ---------- */
+/* ---------- error boundary ---------- */
+
+.boundary {
+    max-width: 460px;
+    margin: 18vh auto;
+    padding: 0 24px;
+    text-align: center;
+}
+
+.boundary h1 {
+    font-size: 1.4rem;
+    margin-bottom: 12px;
+}
+
+.boundary .primary {
+    margin-top: 18px;
+}
 
 /* ---------- chips ---------- */
 

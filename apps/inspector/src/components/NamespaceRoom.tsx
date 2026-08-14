@@ -96,7 +96,7 @@ export function NamespaceConsole({
                         each shard on the shelf is a Walrus blob whose{" "}
                         <code>memwal_namespace</code> is <code>{namespace}</code>. Click a shard to
                         inspect it. Sealed shards need the room decrypted first.
-                        {overflow > 0 && ` (${overflow} more beyond the shelf — decrypt to browse.)`}
+                        {overflow > 0 && ` (${overflow} more not shown — the shelf holds ${MAX_ON_SHELF}.)`}
                     </p>
                     <button className="hint" style={{ background: "none", border: 0, cursor: "pointer", padding: 0 }} onClick={() => setShowSnippet((s) => !s)}>
                         {showSnippet ? "▾" : "▸"} Show the SDK call
@@ -107,7 +107,7 @@ export function NamespaceConsole({
 //   memwal_namespace == "${namespace}"
 // decrypting it:
 const res = await memwal.recall({
-  query: "everything", limit: 100, namespace: "${namespace}",
+  query: "everything that is known", limit: 100, namespace: "${namespace}",
 })
 // join res.results onto the shelf by blob_id`}
                         />

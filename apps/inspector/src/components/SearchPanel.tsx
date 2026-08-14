@@ -21,7 +21,9 @@ export function SearchPanel({ memwal, namespaces, defaultNamespace, network }: P
     const [error, setError] = useState<string | null>(null);
 
     async function run() {
-        if (!query.trim()) return;
+        // The button is disabled while busy, but the Enter key is not — guard
+        // here so overlapping recalls can't resolve out of order.
+        if (busy || !query.trim()) return;
         setBusy(true);
         setError(null);
         try {

@@ -55,7 +55,13 @@ export function ActionsPanel({ memwal, defaultNamespace, onChanged }: Props) {
                 const res = await memwal.analyze(text.trim(), ns);
                 push(`${res.fact_count} facts extracted:`);
                 for (const fact of res.facts) push(`  • ${fact.text}`);
-                await Promise.all(res.job_ids.map((id) => trackJob(id)));
+                // allSettled, not all: one failed job must not hide the ones
+                // that landed, and the chain refresh below must still run.
+                const outcomes = await Promise.allSettled(res.job_ids.map((id) => trackJob(id)));
+                const failed = outcomes.filter((o) => o.status === "rejected");
+                for (const f of failed) {
+                    push(`  ✗ job failed: ${(f as PromiseRejectedResult).reason}`);
+                }
                 setText("");
             } else {
                 push(`restore("${ns}") — re-indexing from on-chain blobs`);

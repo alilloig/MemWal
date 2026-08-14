@@ -118,7 +118,13 @@ function doConsume(): InspectorSettings | null {
     }
     if (state !== pending.state) return null;
 
-    const network: SuiNetwork = frag.get("network") === "testnet" ? "testnet" : "mainnet";
+    // Accept only the networks the inspector enumerates on; an unrecognised
+    // value (e.g. a dashboard on devnet/localnet) would otherwise silently
+    // resolve to the mainnet endpoints and show an empty, wrong-network palace.
+    const reported = frag.get("network");
+    const network: SuiNetwork | null =
+        reported === "mainnet" || reported === "testnet" ? reported : null;
+    if (!network) return null;
     return {
         delegateKey: pending.delegateKey,
         accountId,

@@ -61,6 +61,17 @@ function toNum(v: unknown): number | null {
     return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Read the Walrus blob id from a Blob object's JSON. gRPC has been observed to
+ * return it under both `blob_id` and `blobId` — the sidecar reference reads
+ * both (services/server/scripts/sidecar/routes/walrus-query.ts), so mirror it
+ * rather than storing "" (which breaks the Walruscan link and the reveal join).
+ */
+function readBlobId(json: Record<string, any>): string {
+    const raw = json.blob_id ?? json.blobId;
+    return blobIdToBase64Url(raw) ?? String(raw ?? "");
+}
+
 /** Read the MemWalAccount object — its `owner` address is who owns the blobs. */
 export async function fetchAccount(
     client: SuiGrpcClient,
@@ -132,21 +143,24 @@ export async function fetchMemoryBlobs(
     const raw: Array<{ objectId: string; json: Record<string, any> }> = [];
     let cursor: string | undefined;
 
-    for (;;) {
-        const page = await (client as any).listOwnedObjects({
+    // Guard against a server that never advances the cursor: cap the pages so a
+    // repeated cursor can't spin forever with the UI stuck on "Reading chain…".
+    const MAX_PAGES = 200;
+    for (let page = 0; page < MAX_PAGES; page++) {
+        const res = await (client as any).listOwnedObjects({
             owner,
             type: blobType,
             include: { json: true },
             cursor,
             limit: 50,
         });
-        for (const obj of page?.objects ?? []) {
+        for (const obj of res?.objects ?? []) {
             if (typeof obj?.objectId === "string") {
                 raw.push({ objectId: obj.objectId, json: obj.json ?? {} });
             }
         }
-        if (!page?.hasNextPage || !page?.cursor) break;
-        cursor = page.cursor;
+        if (!res?.hasNextPage || !res?.cursor || res.cursor === cursor) break;
+        cursor = res.cursor;
         onProgress?.(`Found ${raw.length} blob objects so far…`);
     }
 
@@ -158,7 +172,7 @@ export async function fetchMemoryBlobs(
         if (!namespace) return null;
         return {
             objectId,
-            blobId: blobIdToBase64Url(json.blob_id) ?? String(json.blob_id ?? ""),
+            blobId: readBlobId(json),
             namespace,
             agentId: attrs.get("memwal_agent_id") ?? "",
             packageId: attrs.get("memwal_package_id") ?? "",

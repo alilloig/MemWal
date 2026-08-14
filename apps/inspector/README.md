@@ -15,7 +15,8 @@ Every room is a live view over one Walrus Memory account:
 
 Each namespace hashes to one of six generated library variants, so every
 namespace room looks different at first sight — a little memory-palace of your
-own. Panels carry a "Show the SDK call" snippet with the exact code they run.
+own. Panels carry a "Show the SDK call" snippet with the call they run, so the
+palace doubles as a code tour.
 
 ## Run it
 
@@ -49,6 +50,9 @@ localhost calls). See `.env.example` for the optional overrides.
 ## Regenerating the artwork
 
 The rooms are AI-generated (Higgsfield). `gen-src/` holds the reproducible
-pipeline: scene prompts + `gen-scenes.sh` / `gen-rooms.sh` for the stills,
-`legs.sh` + `encode.sh` for the gates cinematic. Raw outputs are gitignored;
-the shipped assets live in `public/palace/`.
+pipeline: `gen-scenes.sh` (prompts) → `gen-rest.sh` (style-locked interiors) →
+`gen-rooms.sh` (rotunda + the six library variants) → `to-webp.py` /
+`rooms-to-webp.py` (encode into `public/palace/`). `legs.sh` renders the
+five-leg camera flight and `encode.sh` encodes it, but only leg 0 ships, as the
+`gates.mp4` connect cinematic. Raw outputs are gitignored; the shipped assets
+live in `public/palace/`.

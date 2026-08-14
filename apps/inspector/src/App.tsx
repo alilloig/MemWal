@@ -292,6 +292,7 @@ function Palace({
         <PalaceNav
             scene={scene}
             onNavigate={navigate}
+            banner={error}
             cinematic={cinematic}
             onCinematicEnd={endCinematic}
             console={consolePanel}

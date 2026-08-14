@@ -18,14 +18,18 @@
  *   3. User clicks "Connect Sui Wallet" → standard dApp Kit wallet popup.
  *   4. Build + sign `add_delegate_key(account, registry, publicKey, label, clock)`
  *      via useSponsoredTransaction (matches SetupWizard pattern).
- *   5. POST result {accountId, walletAddress, packageId, txDigest, label}
- *      to http://localhost:<port>/callback — the MCP package's listener.
+ *   5. POST result {accountId, walletAddress, packageId, txDigest, label, state}
+ *      to http://127.0.0.1:<port>/callback — the MCP package's listener; the
+ *      bridge compares the echoed `state`.
  *   6. Show success screen — user can close the tab.
  *
  * Redirect mode (`/connect/app`): web apps that can't run a localhost listener
- * pass `redirect=<https url>` INSTEAD of `port`. Steps 1–3 are identical; the
- * result is delivered by navigating to the redirect URL with the payload in
- * the URL *fragment* (never sent to any server, invisible to logs/referrers).
+ * pass `redirect=<http(s) url>` INSTEAD of `port`. Steps 2–4 are identical;
+ * step 1 (bridge preflight) does not run — there is no localhost bridge, so the
+ * redirect origin must instead be allowlisted (see isValidRedirect) and the
+ * requesting app verifies the state token itself on return. The result is
+ * delivered by navigating to the redirect URL with the payload plus `network`
+ * in the URL *fragment* (never sent to any server, invisible to logs/referrers).
  * Everything in the fragment is public on-chain data — the delegate private
  * key exists only in the requesting app, which generated it.
  *
@@ -33,8 +37,8 @@
  *   - Wallet not connected → wallet picker.
  *   - User has no Walrus Memory account yet → link to /setup.
  *   - Wallet rejects tx → retry button.
- *   - localhost callback unreachable → keep success on-chain anyway, ask user
- *     to manually copy creds (rare — only if the MCP listener died).
+ *   - localhost callback unreachable → registration stays on-chain; the success
+ *     card tells the user to re-run the MCP login command so creds save locally.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -63,19 +67,28 @@ type Step =
     | 'error'
 
 /**
- * Redirect targets must be plain http(s) URLs. The payload we deliver is all
- * public on-chain data, so no allowlist is needed — but the consent card shows
- * the target origin prominently so the user sees where they'll be sent, and
- * we refuse anything that isn't a web origin (javascript:, data:, custom
- * schemes) to keep this from becoming a script-injection or app-launch vector.
+ * Redirect-mode targets must be on an origin the dashboard vouches for.
+ *
+ * The consent card grants a delegate key on the user's account — so an
+ * arbitrary redirect target is not a payload-confidentiality question (the
+ * fragment is public on-chain data) but a phishing one: any page could point
+ * `/connect/app` at itself and drive a genuine Walrus-branded consent into
+ * registering an attacker's key. This is redirect mode's analogue of the
+ * localhost bridge preflight: only allowlisted origins may initiate it.
+ * Localhost is always allowed (local dev / self-host testing); production
+ * deployers list their sample-app origins in VITE_CONNECT_REDIRECT_ORIGINS.
  */
 function isValidRedirect(url: string): boolean {
+    let u: URL
     try {
-        const u = new URL(url)
-        return u.protocol === 'https:' || u.protocol === 'http:'
+        u = new URL(url)
     } catch {
         return false
     }
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false
+    const host = u.hostname
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '[::1]'
+    return isLocal || config.connectRedirectOrigins.includes(u.origin)
 }
 
 function hexToBytes(hex: string): number[] {
@@ -145,15 +158,21 @@ export default function ConnectMcp() {
      * a web app can't have opened a localhost listener anyway.
      */
     const redirect = params.get('redirect') ?? ''
-    /** Display label for redirect mode (localhost mode gets it from the verified bridge). */
-    const requestedLabel = params.get('label') ?? ''
+    /**
+     * Display label for redirect mode (localhost mode gets it from the verified
+     * bridge). It reaches the on-chain add_delegate_key tx, so strip control
+     * characters and bound the length — a raw query param must not put
+     * arbitrary bytes on-chain or spoof a trusted name in the consent card.
+     */
+    // eslint-disable-next-line no-control-regex
+    const requestedLabel = (params.get('label') ?? '').replace(/[\u0000-\u001f]/g, '').slice(0, 48)
     const publicKey = params.get('publicKey') ?? ''
     const relayer = params.get('relayer') ?? config.memwalServerUrl
     /**
      * Cryptographic state token from the MCP bridge. Must be echoed verbatim
      * in the callback POST — the bridge constant-time compares it to defeat
-     * cross-origin CSRF (audit C2). Empty string if absent (older bridge);
-     * the bridge will then reject our callback with 400.
+     * cross-origin CSRF (audit C2). Empty or malformed here fails `paramsValid`,
+     * so the page shows "Invalid request" and never signs or delivers a callback.
      *
      * Read from `connectState` (current bridge) with a fallback to the legacy
      * `state` param. The bridge renamed this param away from `state` because
@@ -213,7 +232,10 @@ export default function ConnectMcp() {
             setVerifiedBridge({
                 publicKey,
                 label: requestedLabel || 'Web app',
-                relayer,
+                // Show the dashboard's own relayer, not the unverified query
+                // param — the consent card must not present attacker-chosen
+                // text under the trusted "Relayer" label.
+                relayer: config.memwalServerUrl,
             })
             setStep('consent')
             return
@@ -578,10 +600,11 @@ function ConsentCard({
     return (
         <div className="setup-classic-intro">
             <h2 className="setup-classic-title">
-                A local MCP client is requesting access
+                {returnOrigin ? 'A web app is requesting access' : 'A local MCP client is requesting access'}
             </h2>
             <p className="setup-classic-description">
-                This local app calls itself <code style={codeStyle}>{label}</code>. This name is not verified.
+                {returnOrigin ? 'This app' : 'This local app'} calls itself{' '}
+                <code style={codeStyle}>{label}</code>. This name is not verified.
                 Approving grants persistent access until you revoke the delegate key on-chain.
             </p>
 

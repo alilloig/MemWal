@@ -21,7 +21,11 @@ export function SettingsForm({ initial, onSave, onCancel }: Props) {
         setForm((f) => ({ ...f, [key]: value }));
     }
 
-    const canSave = form.delegateKey.trim() !== "" && form.accountId.trim() !== "";
+    // A malformed key would throw inside MemWal.create() during render — gate
+    // save on the shapes the SDK requires (Ed25519 hex key, 0x-prefixed id).
+    const keyOk = /^(0x)?[0-9a-fA-F]{64}$/.test(form.delegateKey.trim());
+    const accountOk = /^0x[0-9a-fA-F]{64}$/.test(form.accountId.trim());
+    const canSave = keyOk && accountOk;
 
     async function connect() {
         setConnecting(true);
@@ -166,6 +170,12 @@ export function SettingsForm({ initial, onSave, onCancel }: Props) {
                         />
                     </label>
 
+                    {form.delegateKey.trim() !== "" && !keyOk && (
+                        <p className="hint">Delegate key must be 64 hex characters.</p>
+                    )}
+                    {form.accountId.trim() !== "" && !accountOk && (
+                        <p className="hint">Account ID must be 0x + 64 hex characters.</p>
+                    )}
                     <div className="form-actions">
                         <button type="submit" className="primary" disabled={!canSave}>
                             Save credentials
