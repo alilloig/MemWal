@@ -11,14 +11,16 @@ import { variantFor } from "../palace/scenes";
 import { Snippet } from "./Snippet";
 
 /**
- * Where the crystals sit on the back-wall niche grid (viewport %). The rows
- * line up with the three bands of diamond niches in the library room stills;
- * the crystals rest just in front so they're large enough to read and click.
+ * Niche centres of the uniform library grid (viewport %), measured from the
+ * shared room still: 7 arched niches across, 3 rows. Every variant room is a
+ * recolor of the same base, so these anchors land in the niches everywhere.
  */
-const SHELF = { left: 30, right: 70, rows: [33, 43.5, 53.5] as const, perRow: 6 };
-const MAX_ON_SHELF = SHELF.rows.length * SHELF.perRow;
+const NICHE_COLS = [12.8, 24.8, 38.1, 50, 62, 74.5, 85.7] as const;
+const NICHE_ROWS = [29, 50.5, 69.5] as const;
+const MAX_ON_SHELF = NICHE_COLS.length * NICHE_ROWS.length; // 21
 
-// Small deterministic per-slot jitter so the crystals feel placed, not tiled.
+// Tiny deterministic per-slot variation so identical crystals feel placed by
+// hand — rotation/scale only, never position (that must hit the niche).
 function jitter(i: number, spread: number) {
     return (((i * 2654435761) % 1000) / 1000 - 0.5) * 2 * spread;
 }
@@ -36,17 +38,16 @@ export function ShelfShards({
 }) {
     const crystal = `/palace/shard_${variantFor(namespace).key}.webp`;
     const placed = blobs.slice(0, MAX_ON_SHELF);
-    const step = (SHELF.right - SHELF.left) / (SHELF.perRow - 1);
     return (
         <>
             {placed.map((b, i) => {
-                const row = Math.floor(i / SHELF.perRow);
-                const col = i % SHELF.perRow;
+                const row = Math.floor(i / NICHE_COLS.length);
+                const col = i % NICHE_COLS.length;
                 const revealed = b.text !== undefined;
-                const x = SHELF.left + col * step + jitter(i, 0.7);
-                const y = SHELF.rows[row] + jitter(i * 3, 0.6);
-                const rot = jitter(i * 7, 7);
-                const scale = 0.9 + Math.abs(jitter(i * 5, 0.14));
+                const x = NICHE_COLS[col];
+                const y = NICHE_ROWS[row];
+                const rot = jitter(i * 7, 5);
+                const scale = 0.92 + Math.abs(jitter(i * 5, 0.12));
                 return (
                     <button
                         key={b.objectId}
